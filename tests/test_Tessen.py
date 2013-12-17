@@ -126,13 +126,19 @@ class TestAllGeneratorLoading(TestTessen):
         self.not_in_test(self.offers, "Company", ("MERI", "CTCT"))
         self.not_in_test(self.genres, "Company", ("MERI", "CTCT"))
 
-    def test_incrementer(self):
+    def test_offer_incrementer(self):
 
         arr = Tessen.stack_columns(self.offers)
         increment = Tessen.incrementalise(arr)
 
         self.assertTrue(arr["Quantity"].sum() == increment["Incr Quantity"].sum())
 
+    def test_reserve_incrementer(self):
+
+        arr = Tessen.stack_columns(self.genres)
+        increment = Tessen.incrementalise(arr)
+
+        self.assertTrue(arr["Quantity"].sum() == increment["Incr Quantity"].sum())
 
 
 
