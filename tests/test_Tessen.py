@@ -61,8 +61,23 @@ class TestTessenDataLoading(TestTessen):
 
 class TestTessenDataFilters(TestTessen):
 
+    def test_single_date(self):
 
-    def test_single_period_filter(self):
+        date = datetime.datetime(2013,12,12)
+        date_col = "Trading_Date"
+
+        fdf = Tessen.filter_dates(self.offers, date, date_col)
+        unique_dates = fdf[date_col].unique()
+
+        self.assertTrue(len(unique_dates) == 1)
+        self.assertTrue(unique_dates[0] == date.strftime('%Y-%m-%d'))
+
+    def test_incorrect_single_date(self):
+
+        date = datetime.datetime(2013,12,13)
+
+
+    def test_single_period(self):
         period = 44.0
         period_col = "Trading_Period"
 
@@ -115,6 +130,32 @@ class TestTessenDataFilters(TestTessen):
             self.assertTrue(c not in unique_companies)
 
 
+    def test_single_station(self):
+
+        station = "MAN"
+        station_col = "Station"
+
+        fdf = Tessen.filter_stations(self.offers, station, station_col)
+        unique_stations = fdf[station_col].unique()
+
+        self.assertTrue(len(unique_stations) == 1)
+        self.assertTrue(unique_stations[0] == station)
+
+    def test_multiple_station(self):
+
+        stations = ("MAN", "HLY", "OTC")
+        station_col = "Station"
+
+        fdf = Tessen.filter_stations(self.offers, stations, station_col)
+        unique_stations = fdf[station_col].unique()
+
+        self.assertTrue(len(unique_stations) == len(stations))
+
+        for s in stations:
+            self.assertTrue(s in unique_stations)
+
+        for s in ("BEN", "TKU", "MTI"):
+            self.assertTrue(s not in unique_stations)
 
 
 if __name__ == '__main__':

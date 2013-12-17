@@ -49,7 +49,13 @@ def _check_iterator(x):
 
 def filter_dates(df, dates, date_col=None):
     dates = _check_iterator(dates)
-    parsed_dates = [parse(x) for x in dates]
+    datetime_dates = []
+    for d in dates:
+        if not type(d) == datetime.datetime:
+            datetime_dates.append(parse(d))
+        else:
+            datetime_dates.append(d)
+    parsed_dates = [x.strftime('%Y-%m-%d') for x in datetime_dates]
     return _general_filter(df, date_col, parsed_dates)
 
 
