@@ -7,6 +7,7 @@ import os
 import datetime
 from dateutil.parser import parse
 import simplejson as json
+from collections import defaultdict
 
 # C Library Imports
 import numpy as np
@@ -14,16 +15,20 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 
+# Use a Static JSON file to provide default column names
+# These can be overridden on a function by function basis
 BASE_DIRECTORY = os.path.dirname(__file__)
 with open(os.path.join(BASE_DIRECTORY, 'static_names.json')) as f:
-    STATICS = json.load(f)
+    STATIC = json.load(f)
 
 def load_frame(filename, date_col=STATIC['date_col'],
                period_col=STATIC['period_col']):
 
     df = pd.read_csv(filename)
-    df = convert_dates(df, date_col=STATIC['date_col'])
-    df = convert_periods(df, period_col=STATIC['period_col'])
+    df = convert_dates(df, date_col=date_col)
+    df = convert_periods(df, period_col=period_col)
+
+    df = strip_title_columns(df)
 
     return df
 
@@ -53,7 +58,7 @@ def _check_iterator(x):
     return x
 
 
-def filter_dates(df, dates, date_col=None):
+def filter_dates(df, dates, date_col=STATIC['date_col']):
     dates = _check_iterator(dates)
     datetime_dates = []
     for d in dates:
@@ -65,27 +70,27 @@ def filter_dates(df, dates, date_col=None):
     return _general_filter(df, date_col, parsed_dates)
 
 
-def filter_periods(df, periods, period_col=None):
+def filter_periods(df, periods, period_col=STATIC['period_col']):
     periods = _check_iterator(periods)
     parsed_periods = [int(x) for x in periods]
     return _general_filter(df, period_col, parsed_periods)
 
 
-def filter_stations(df, stations, station_col=None):
+def filter_stations(df, stations, station_col=STATIC['station_col']):
     stations = _check_iterator(stations)
     return _general_filter(df, station_col, stations)
 
 
-def filter_company(df, companies, company_col=None):
+def filter_company(df, companies, company_col=STATIC['company_col']):
     companies = _check_iterator(companies)
     return _general_filter(df, company_col, companies)
 
 
-def filter_island(df, island, node_name=None, bus_id=STATIC['bus_name'],
+def filter_island(df, island, node_name, bus_id=STATIC['bus_name'],
                   island_name=STATIC['island_name']):
 
     # Load the mapping and get rid of the dupes
-    map_name = os.path.join(base_directory, STATIC["nodal_meta"])
+    map_name = os.path.join(BASE_DIRECTORY, STATIC["nodal_meta"])
     island_map = pd.read_csv(map_name)
     imap = island_map[[bus_id, island_name]].drop_duplicates()
 
@@ -101,7 +106,55 @@ def load_generator_data(offer_filename, genres_filename, dates=None,
                         periods=None, companies=None, stations=None,
                         island=None):
 
-    pass
+    offers = load_frame(offer_filename)
+    genres = load_frame(genres_filename)
+
+    if dates:
+        offers = filter_dates(offers, dates)
+        genres = filter_dates(genres, dates)
+
+    print len(offers)
+
+    if periods:
+        offers = filter_periods(offers, periods)
+        genres = filter_periods(genres, periods)
+
+    if companies:
+        offers = filter_company(offers, companies)
+        genres = filter_company(genres, companies)
+
+    if stations:
+        offers = filter_stations(offers, stations)
+        genres = filter_stations(genres, stations)
+
+    if island:
+        offers = filter_island(offers, island, STATIC['offer_node'])
+        genres = filter_island(genres, island, STATIC['genres_node'])
+
+
+    return offers, genres
+
+
+def strip_title_columns(df):
+    df.rename(columns={x: x.strip().title() for x in df.columns},
+                      inplace=True)
+
+    return df
+
+def classify_columns(band_columns):
+
+    classification = defaultdict(dict)
+    for b in band_columns:
+        band = int(b.split('_')[0][-1])
+        param = b.split('_')[-1]
+
+        # Note can I write these better. Nested Ternaries are ugly
+        reserve = "FIR" if "6S" in b else "SIR" if "60S" in b else "Energy"
+        product = "PLSR" if "Plsr" in b else "TWDSR" if "Twdsr" in b else "IL" if "6S" in b else "Energy"
+
+        classification[(product, reserve, band)][param] = b
+
+    return classification
 
 
 if __name__ == '__main__':

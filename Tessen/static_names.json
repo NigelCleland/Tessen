@@ -7,6 +7,6 @@
     "genres_node": "Grid_Point",
     "il_node": "Grid_Exit_Point",
     "island_name": "Island Name",
-    "bus_name": "Bus Id"
+    "bus_name": "Bus Id",
     "nodal_meta": "nodal_metadata.csv"
 }

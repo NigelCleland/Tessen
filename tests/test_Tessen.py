@@ -33,6 +33,24 @@ class TestTessen(unittest.TestCase):
         self.il = Tessen.load_frame('./test_data/ilreserves20131212.csv')
         self.genres = Tessen.load_frame('./test_data/generatorreserves20131212.csv')
 
+    def length_test(self, df, col, length):
+        unique = df[col].unique()
+        self.assertTrue(len(unique) == length)
+
+    def in_test(self, df, col, items):
+        unique = df[col].unique()
+        for i in items:
+            self.assertTrue(i in unique)
+
+    def not_in_test(self, df, col, items):
+        unique = df[col].unique()
+        for i in items:
+            self.assertTrue(i not in unique)
+
+    def col_type_test(self, df, col, type):
+        self.assertTrue(df[col].dtype == type)
+
+
     def tearDown(self):
         pass
 
@@ -57,6 +75,56 @@ class TestTessenDataLoading(TestTessen):
         self.assertTrue(isinstance(genres, pd.DataFrame))
         self.assertTrue(type(self.genres["Trading_Date"].ix[0]) == pd.tslib.Timestamp)
         self.assertTrue(self.genres["Trading_Period"].dtype == int)
+
+
+
+class TestAllGeneratorLoading(TestTessen):
+
+    def setUp(self):
+
+        self.offers, self.genres = Tessen.load_generator_data(
+            './test_data/offers20131212.csv',
+            './test_data/generatorreserves20131212.csv',
+            periods=(12, 14), companies=("MRPL", "GENE"),
+            stations=("TKU", "MTI"), island="North Island")
+
+
+    def test_datatypes(self):
+
+        self.assertTrue(type(self.offers) == pd.DataFrame)
+        self.assertTrue(type(self.genres) == pd.DataFrame)
+
+
+    def test_periods(self):
+        self.length_test(self.offers, "Trading_Period", 2)
+        self.length_test(self.genres, "Trading_Period", 2)
+
+        self.in_test(self.offers, "Trading_Period", (12, 14))
+        self.in_test(self.genres, "Trading_Period", (12, 14))
+
+        self.not_in_test(self.offers, "Trading_Period", (26, 1))
+        self.not_in_test(self.genres, "Trading_Period", (26, 1))
+
+
+    def test_stations(self):
+        self.length_test(self.offers, "Station", 2)
+        self.length_test(self.genres, "Station", 2)
+
+        self.in_test(self.offers, "Station", ("TKU", "MTI"))
+        self.in_test(self.genres, "Station", ("TKU", "MTI"))
+
+        self.not_in_test(self.offers, "Station", ("HLY", "MAN"))
+        self.not_in_test(self.genres, "Station", ("HLY", "MAN"))
+
+    def test_companies(self):
+        self.length_test(self.offers, "Company", 2)
+        self.length_test(self.genres, "Company", 2)
+
+        self.in_test(self.offers, "Company", ("GENE", "MRPL"))
+        self.in_test(self.genres, "Company", ("GENE", "MRPL"))
+
+        self.not_in_test(self.offers, "Company", ("MERI", "CTCT"))
+        self.not_in_test(self.genres, "Company", ("MERI", "CTCT"))
 
 
 class TestTessenDataFilters(TestTessen):
@@ -186,6 +254,41 @@ class TestTessenDataFilters(TestTessen):
         # These are South Island Stations
         for s in ("HLY", "OTC", "MTI", "WWD"):
             self.assertTrue(s not in fdf["Station"].unique())
+
+
+class TestStackCreation(TestTessen):
+
+    def test_gen_col_classify(self):
+
+        band_columns = [x for x in self.offers.columns if "Band" in x]
+        classification = Tessen.classify_columns(band_columns)
+
+        k1 = ("Energy", "Energy", 2)
+        k2 = "Price"
+        v1 = "Band2_Price"
+        k3 = "Power"
+        v2 = "Band2_Power"
+
+        self.assertTrue(classification[k1][k2] == v1)
+        self.assertTrue(classification[k1][k3] == v2)
+
+
+    def test_res_col_classify(self):
+
+        band_columns = [x for x in self.genres.columns if "Band" in x]
+        classification = Tessen.classify_columns(band_columns)
+
+        k1 = ("PLSR", "FIR", 2)
+        k2 = "Price"
+        v1 = "Band2_Plsr_6S_Price"
+        k3 = "Max"
+        v2 = "Band2_Plsr_6S_Max"
+        k4 = "Percent"
+        v3 = "Band2_Plsr_6S_Percent"
+
+        self.assertTrue(classification[k1][k2] == v1)
+        self.assertTrue(classification[k1][k3] == v2)
+        self.assertTrue(classification[k1][k4] == v3)
 
 if __name__ == '__main__':
     unittest.main()
