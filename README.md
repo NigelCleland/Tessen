@@ -1,14 +1,14 @@
 Tessen
 ======
 
-.. image:: https://badge.fury.io/py/{{ cookiecutter.repo_name }}.png
-    :target: http://badge.fury.io/py/{{ cookiecutter.repo_name }}
+.. image:: https://badge.fury.io/py/Tessen.png
+    :target: http://badge.fury.io/py/Tessen
 
-.. image:: https://travis-ci.org/{{ cookiecutter.github_username }}/{{ cookiecutter.repo_name }}.png?branch=master
-        :target: https://travis-ci.org/{{ cookiecutter.github_username }}/{{ cookiecutter.repo_name }}
+.. image:: https://travis-ci.org/NigelCleland/Tessen.png?branch=master
+        :target: https://travis-ci.org/NigelCleland/Tessen
 
-.. image:: https://pypip.in/d/{{ cookiecutter.repo_name }}/badge.png
-        :target: https://crate.io/packages/{{ cookiecutter.repo_name }}?version=latest
+.. image:: https://pypip.in/d/Tessen/badge.png
+        :target: https://crate.io/packages/Tessen?version=latest
 
 
 A [Tessen](http://en.wikipedia.org/wiki/Japanese_war_fan) is a  Japanese hand fans used in warfare by the Samurai class of feudal Japan.
@@ -22,7 +22,7 @@ A custom metadata file is included which is used to map data to locations and co
 
 
 * Free software: BSD license
-* Documentation: http://{{ cookiecutter.repo_name }}.rtfd.org.
+* Documentation: http://Tessen.rtfd.org.
 
 Features
 --------
