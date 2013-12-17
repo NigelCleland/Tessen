@@ -8,5 +8,6 @@
     "il_node": "Grid_Exit_Point",
     "island_name": "Island Name",
     "bus_name": "Bus Id",
-    "nodal_meta": "nodal_metadata.csv"
+    "nodal_meta": "nodal_metadata.csv",
+    "date_format": "%Y/%m/%d"
 }

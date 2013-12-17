@@ -23,6 +23,18 @@ with open(os.path.join(BASE_DIRECTORY, 'static_names.json')) as f:
 
 def load_frame(filename, date_col=STATIC['date_col'],
                period_col=STATIC['period_col']):
+    """ Load a DataFrame from a file and perform some basic type munging
+    upon the date and period rows. In addition, white space can be left
+    in the column titles which should be removed.
+
+    Parameters
+    ----------
+    filename: The path of the csv file to be loaded
+
+    Returns
+    -------
+    df: DataFrame of the offer data
+    """
 
     df = pd.read_csv(filename)
     df = convert_dates(df, date_col=date_col)
@@ -32,10 +44,21 @@ def load_frame(filename, date_col=STATIC['date_col'],
 
     return df
 
-def convert_dates(df, date_col=None):
+def convert_dates(df, date_col=None, format=STATIC['date_format']):
+    """ Convert a series of dates for the specified format
+
+    Parameters
+    ----------
+    df: DataFrame to conver the dates for
+
+    Returns
+    -------
+    df: DataFrame with datetime objects as the dates
+
+    """
 
     unique_dates = df[date_col].unique()
-    date_map = {date: datetime.datetime.strptime(date, '%d/%m/%Y') for date in unique_dates}
+    date_map = {date: datetime.datetime.strptime(date, format) for date in unique_dates}
     df[date_col] = df[date_col].map(date_map)
     return df
 
@@ -112,8 +135,6 @@ def load_generator_data(offer_filename, genres_filename, dates=None,
     if dates:
         offers = filter_dates(offers, dates)
         genres = filter_dates(genres, dates)
-
-    print len(offers)
 
     if periods:
         offers = filter_periods(offers, periods)
