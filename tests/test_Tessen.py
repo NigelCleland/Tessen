@@ -126,6 +126,16 @@ class TestAllGeneratorLoading(TestTessen):
         self.not_in_test(self.offers, "Company", ("MERI", "CTCT"))
         self.not_in_test(self.genres, "Company", ("MERI", "CTCT"))
 
+    def test_incrementer(self):
+
+        arr = Tessen.stack_columns(self.offers)
+        increment = Tessen.incrementalise(arr)
+
+        self.assertTrue(arr["Quantity"].sum() == increment["Incr Quantity"].sum())
+
+
+
+
 
 class TestTessenDataFilters(TestTessen):
 
@@ -300,12 +310,12 @@ class TestStackCreation(TestTessen):
 
 
     def test_reserve_stack_creation(self):
-
         arr = Tessen.stack_columns(self.genres)
 
         self.length_test(arr, "Product_Type", 2)
         self.length_test(arr, "Reserve_Type", 2)
         self.length_test(arr, "Band", 3)
+
 
 
 if __name__ == '__main__':

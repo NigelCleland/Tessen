@@ -181,6 +181,23 @@ def stack_columns(df):
     return arr
 
 
+def incrementalise(df):
+    """ Take a Stacked DataFrame and Incrementalise It """
+
+    def yield_increment(df):
+        df["Incr Quantity"] = 1
+        for index, series in df.iterrows():
+            quantity = series["Quantity"]
+            while quantity > 0:
+                series["Incr Quantity"] = min(1, quantity)
+                yield series.copy()
+                quantity -= 1
+
+    return pd.concat(yield_increment(df), axis=1).T
+
+
+
+
 if __name__ == '__main__':
     pass
 
