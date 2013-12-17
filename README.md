@@ -1,16 +1,6 @@
 Tessen
 ======
 
-.. image:: https://badge.fury.io/py/Tessen.png
-    :target: http://badge.fury.io/py/Tessen
-
-.. image:: https://travis-ci.org/NigelCleland/Tessen.png?branch=master
-        :target: https://travis-ci.org/NigelCleland/Tessen
-
-.. image:: https://pypip.in/d/Tessen/badge.png
-        :target: https://crate.io/packages/Tessen?version=latest
-
-
 A [Tessen](http://en.wikipedia.org/wiki/Japanese_war_fan) is a  Japanese hand fans used in warfare by the Samurai class of feudal Japan.
 
 This repo is not about Samurai though.
