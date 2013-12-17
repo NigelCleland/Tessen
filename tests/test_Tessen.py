@@ -140,6 +140,21 @@ class TestAllGeneratorLoading(TestTessen):
 
         self.assertTrue(arr["Quantity"].sum() == increment["Incr Quantity"].sum())
 
+    def test_bathtub(self):
+
+        percent = 200.
+        maximum = 50.
+        capacity = 100.
+
+        cap_line, res_line = Tessen.create_bathtub(percent, maximum, capacity)
+
+        # Max Check
+        self.assertTrue(res_line.max() == maximum)
+        # Slope Checks
+        slope = res_line[1:] - res_line[:-1]
+        self.assertTrue(slope[1] == percent/100.)
+        self.assertTrue(slope[-1] == -1)
+
 
 
 

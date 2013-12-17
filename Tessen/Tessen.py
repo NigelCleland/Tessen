@@ -196,6 +196,16 @@ def incrementalise(df):
     return pd.concat(yield_increment(df), axis=1).T
 
 
+def create_bathtub(percentage, maximum, capacity):
+
+    capacity_line = np.arange(1, capacity+1)
+    reserve_line = capacity_line * percentage / 100.
+    reserve_line = np.where(reserve_line <= maximum, reserve_line, maximum)
+    reserve_line = np.where(reserve_line <= capacity_line[::-1],
+                            reserve_line, capacity_line[::-1])
+
+    return capacity_line, reserve_line
+
 
 
 if __name__ == '__main__':
