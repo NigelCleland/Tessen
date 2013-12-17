@@ -14,7 +14,7 @@ A custom metadata file is included which is used to map data to locations and co
 * Free software: BSD license
 * Documentation: http://Tessen.rtfd.org.
 
-Features
+Todo
 --------
 
 * Python Version
