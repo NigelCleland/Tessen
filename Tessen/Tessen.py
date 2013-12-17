@@ -157,6 +157,30 @@ def classify_columns(band_columns):
     return classification
 
 
+def stack_columns(df):
+
+    def yield_single_stack(df):
+
+        general_columns = [x for x in df.columns if "Band" not in x]
+        band_columns = [x for x in df.columns if "Band" in x]
+        classification = classify_columns(band_columns)
+
+        for key in classification:
+            allcols = general_columns + classification[key].values()
+
+            single = df[allcols].copy()
+            single["Product_Type"] = key[0]
+            single["Reserve_Type"] = key[1]
+            single["Band"] = key[2]
+            single.rename(columns={v: k for k, v in classification[key].items()}, inplace=True)
+            yield single
+
+    arr = pd.concat(yield_single_stack(df), ignore_index=True)
+    max_names = ("Power", "Max")
+    arr.rename(columns={x: "Quantity" for x in max_names}, inplace=True)
+    return arr
+
+
 if __name__ == '__main__':
     pass
 

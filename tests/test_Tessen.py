@@ -290,5 +290,23 @@ class TestStackCreation(TestTessen):
         self.assertTrue(classification[k1][k3] == v2)
         self.assertTrue(classification[k1][k4] == v3)
 
+
+    def test_offer_stack_creation(self):
+        arr = Tessen.stack_columns(self.offers)
+
+        self.length_test(arr, "Product_Type", 1)
+        self.length_test(arr, "Reserve_Type", 1)
+        self.length_test(arr, "Band", 5)
+
+
+    def test_reserve_stack_creation(self):
+
+        arr = Tessen.stack_columns(self.genres)
+
+        self.length_test(arr, "Product_Type", 2)
+        self.length_test(arr, "Reserve_Type", 2)
+        self.length_test(arr, "Band", 3)
+
+
 if __name__ == '__main__':
     unittest.main()
