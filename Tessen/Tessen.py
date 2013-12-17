@@ -6,6 +6,7 @@ import sys
 import os
 import datetime
 from dateutil.parser import parse
+import simplejson as json
 
 # C Library Imports
 import numpy as np
@@ -13,11 +14,16 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-def load_frame(filename, date_col="Trading_Date", period_col="Trading_Period"):
+BASE_DIRECTORY = os.path.dirname(__file__)
+with open(os.path.join(BASE_DIRECTORY, 'static_names.json')) as f:
+    STATICS = json.load(f)
+
+def load_frame(filename, date_col=STATIC['date_col'],
+               period_col=STATIC['period_col']):
 
     df = pd.read_csv(filename)
-    df = convert_dates(df, date_col=date_col)
-    df = convert_periods(df, period_col=period_col)
+    df = convert_dates(df, date_col=STATIC['date_col'])
+    df = convert_periods(df, period_col=STATIC['period_col'])
 
     return df
 
@@ -75,6 +81,27 @@ def filter_company(df, companies, company_col=None):
     return _general_filter(df, company_col, companies)
 
 
+def filter_island(df, island, node_name=None, bus_id=STATIC['bus_name'],
+                  island_name=STATIC['island_name']):
+
+    # Load the mapping and get rid of the dupes
+    map_name = os.path.join(base_directory, STATIC["nodal_meta"])
+    island_map = pd.read_csv(map_name)
+    imap = island_map[[bus_id, island_name]].drop_duplicates()
+
+    # Strip due to extra whitespace on some nodes
+    df[node_name] = df[node_name].apply(lambda x: x.strip())
+    mdf = df.merge(imap, left_on=node_name, right_on=bus_id)
+
+    # Simple filter is fine as only single islands are possible
+    return mdf[mdf[island_name] == island]
+
+
+def load_generator_data(offer_filename, genres_filename, dates=None,
+                        periods=None, companies=None, stations=None,
+                        island=None):
+
+    pass
 
 
 if __name__ == '__main__':

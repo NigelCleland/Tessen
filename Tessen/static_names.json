@@ -1,0 +1,12 @@
+{
+    "date_col": "Trading_Date",
+    "period_col": "Trading_Period",
+    "company_col": "Company",
+    "station_col": "Station",
+    "offer_node": "Grid_Injection_Point",
+    "genres_node": "Grid_Point",
+    "il_node": "Grid_Exit_Point",
+    "island_name": "Island Name",
+    "bus_name": "Bus Id"
+    "nodal_meta": "nodal_metadata.csv"
+}
