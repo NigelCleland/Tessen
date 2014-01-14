@@ -9,11 +9,11 @@ import datetime
 def incrementalise(frame):
 
     def yield_increment(frame):
-        frame["Incr Quantity"] = 1
+        frame["Incr_Energy_ Quantity"] = 1
         for index, series in frame.iterrows():
             quantity = series["Quantity"]
             while quantity > 0:
-                series["Incr Quantity"] = min(1, quantity)
+                series["Incr_Energy_Quantity"] = min(1, quantity)
                 yield series.copy()
                 quantity -= 1
 
@@ -30,3 +30,13 @@ def create_feasible(percentage, maximum_reserve, maximum_energy):
                             reserve_line, capacity_line[::-1])
 
     return dict(zip(capacity_line, reserve_line))
+
+def station_fan(energy, reserve):
+
+    reserve_copy = reserve.sort("Price")
+    incr_energy = incrementalise(energy)
+
+    for percent, price, quantity in reserve_copy[["Percentage",
+                                "Price", "Quantity"]]:
+        print percent
+
