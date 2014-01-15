@@ -92,20 +92,26 @@ def plotfan(fancurve):
     fig, axes = plt.subplots(1,1, figsize=(16,9))
 
     # Plot the Reserve Lines
-    for price in np.sort(fancurve["Reserve_Price"].unique()):
+    reserve_prices = np.sort(fancurve["Reserve_Price"].unique())
+    reserve_colours = cm.Blues(np.linspace(0, 1, len(reserve_prices)))
+    reserve_legend = []
+    reserve_labels = []
+    for price, c in zip(reserve_prices, reserve_colours):
         st = fancurve[fancurve["Reserve_Price"] <= price].groupby(["Node", "Energy_Stack"], as_index=False)
         agg = st.aggregate({"Incr_Reserve_Quantity": np.sum, "Incr_Energy_Quantity": np.max, "Price": np.max}).sort("Price")
         agg["Cum_Energy"] = agg["Incr_Energy_Quantity"].cumsum()
         agg["Cum_Reserve"] =  agg["Incr_Reserve_Quantity"].cumsum()
 
-        axes.plot(agg["Cum_Energy"], agg["Cum_Reserve"], label=price)
+        rl = axes.plot(agg["Cum_Energy"], agg["Cum_Reserve"], label=price, color=c, linewidth=2)
+        reserve_legend.append(rl[0])
+        reserve_labels.append(price)
 
     # Plot the Energy Colours...
-
     price_increments = np.sort(agg["Price"].unique())
     price_colours = cm.YlOrRd(np.linspace(0, 1, len(price_increments)))
-
     old_price = 0
+    energy_legend = []
+    energy_legend_labels = []
     for price, c in zip(price_increments, price_colours):
 
         sub_price = agg[(agg["Price"] >= old_price) & (agg["Price"] <= price)]
@@ -115,10 +121,20 @@ def plotfan(fancurve):
         reserve_zeroes = np.zeros(len(reserve_range))
 
         axes.fill_between(energy_range, reserve_zeroes, reserve_range, alpha=0.5, color=c)
+        ll = axes.plot([0,0],[0,0], color=c, label=price)
+        energy_legend.append(ll[0])
+        energy_legend_labels.append(price)
 
         old_price = price
 
-    plt.legend()
+    legend1 = axes.legend(reserve_legend, reserve_labels, loc='upper right')
+    legend2 = axes.legend(energy_legend, energy_legend_labels, loc='upper left')
+    plt.gca().add_artist(legend1)
+
+
+    ymax = reserve_range.max()
+    xmax = energy_range.max()
+    axes.set_xlim(0, xmax+100)
 
     return fig, axes
 
