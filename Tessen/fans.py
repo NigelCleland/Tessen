@@ -71,3 +71,54 @@ def station_fan(energy, reserve):
 
     return pd.concat(stationf, ignore_index=True)
 
+
+def create_full_fan(energy, reserve):
+
+    energy_hold = energy[energy["Quantity"] > 0]
+    df_objects = []
+
+    for stat in energy["Node"].unique():
+        single_energy = energy[energy["Node"] == stat]
+        single_reserve = reserve[reserve["Node"] == stat]
+
+        singlefan = station_fan(single_energy, single_reserve)
+        df_objects.append(singlefan.copy())
+
+    return pd.concat(df_objects, ignore_index=True).fillna(0)
+
+def plotfan(fancurve):
+
+    # Create the Figure:
+    fig, axes = plt.subplots(1,1, figsize=(16,9))
+
+    # Plot the Reserve Lines
+    for price in np.sort(fancurve["Reserve_Price"].unique()):
+        st = fancurve[fancurve["Reserve_Price"] <= price].groupby(["Node", "Energy_Stack"], as_index=False)
+        agg = st.aggregate({"Incr_Reserve_Quantity": np.sum, "Incr_Energy_Quantity": np.max, "Price": np.max}).sort("Price")
+        agg["Cum_Energy"] = agg["Incr_Energy_Quantity"].cumsum()
+        agg["Cum_Reserve"] =  agg["Incr_Reserve_Quantity"].cumsum()
+
+        axes.plot(agg["Cum_Energy"], agg["Cum_Reserve"], label=price)
+
+    # Plot the Energy Colours...
+
+    price_increments = np.sort(agg["Price"].unique())
+    price_colours = cm.YlOrRd(np.linspace(0, 1, len(price_increments)))
+
+    old_price = 0
+    for price, c in zip(price_increments, price_colours):
+
+        sub_price = agg[(agg["Price"] >= old_price) & (agg["Price"] <= price)]
+
+        energy_range = sub_price["Cum_Energy"].values
+        reserve_range = sub_price["Cum_Reserve"].values
+        reserve_zeroes = np.zeros(len(reserve_range))
+
+        axes.fill_between(energy_range, reserve_zeroes, reserve_range, alpha=0.5, color=c)
+
+        old_price = price
+
+    plt.legend()
+
+    return fig, axes
+
