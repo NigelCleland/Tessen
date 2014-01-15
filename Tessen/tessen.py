@@ -59,8 +59,6 @@ def parse_tessen_args(args):
 
     return parser.parse_args(args)
 
-def filter_data():
-    pass
 
 def main():
 
