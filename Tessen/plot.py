@@ -54,7 +54,6 @@ def configure_data(data, price=None):
     return sorted_data
 
 
-
 def configure_reserve_data(data, price):
     sorted_data = configure_data(data, price=price)
     energy_points = sorted_data["Incr_Energy_Quantity"].cumsum().values
