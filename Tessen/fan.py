@@ -1,16 +1,37 @@
+"""
+The Fans module is the main component of the Tessen package.
+It, takes an OfferPandas Frame and does all of the configuration necessary
+in order to create the fan curve excluding the plotting.
+"""
+
 import pandas as pd
 import numpy as np
 import sys
 import os
 import datetime
-import matplotlib.pyplot as plt
-import matplotlib.cm as cm
-
-#import OfferPandas
+from OfferPandas import Frame, load_offerframe
 
 def incrementalise(frame):
+    """ Function which takes a Frame object and converts the Energy Quantities
+    into an incremental fashion. E.g. a 60MW offer will create 60 duplicate
+    rows in the frame.
 
-    def yield_increment(frame):
+    This is used to make mapping energy and reserve offers together simpler.
+
+    Paremeters
+    ----------
+    frame: OfferPandas.Frame object
+
+    Returns:
+    --------
+    incr_frame: pd.DataFrame object, incremental dataframe
+
+    """
+
+    def _yield_increment(frame):
+        """ Generator function which yields individuals series which can be
+        concatted together.
+        """
         frame["Incr_Energy_Quantity"] = 1
         for index, series in frame.iterrows():
             quantity = series["Quantity"]
@@ -19,10 +40,11 @@ def incrementalise(frame):
                 yield series.copy()
                 quantity -= 1
 
+    # We do pass empty dataframes on occasion
     if len(frame) == 0:
         return None
 
-    incr_frame = pd.concat(yield_increment(frame), axis=1).T
+    incr_frame = pd.concat(_yield_increment(frame), axis=1).T
     incr_frame["Energy_Stack"] = incr_frame["Incr_Energy_Quantity"].cumsum()
     return incr_frame
 
