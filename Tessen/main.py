@@ -22,25 +22,23 @@ import fans
 
 def tessen(args):
 
+    # Load some default parameters in case simple arguments aren't
+    # passed, this ensures at least something will be produced
+    with open('default_options.json') as f:
+            filters = json.load(f)
+
     if args.energy_filename is None:
         raise ValueError("You must pass an energy offer file")
 
     if args.genres_filename is None:
         raise ValueError("You must pass a generator reserve offer file")
 
-    if args.period is None:
-        raise ValueError("You must pass a period")
-
-    if args.island is None:
-        raise ValueError("You must pass an island")
+    # Parse the Filters
+    reserve_filters = parse_filters(filters, args)
 
     # Load the files
     Energy = OfferPandas.load_offerframe(args.energy_filename)
     Reserve = OfferPandas.load_offerframe(args.genres_filename)
-
-    # Parse the Filters
-    reserve_filters = parse_filters(args)
-
     # Energy Filters is a subset of Reserve filters without the PLSR/FIR/SIR
     energy_filters = reserve_filters.copy()
     energy_filters.pop("Reserve_Type")
@@ -57,11 +55,9 @@ def tessen(args):
 
 
 
-def parse_filters(args):
+def parse_filters(filters, args):
 
-    filters = {}
-
-    filters = appenddict(filters, "Trading_Period", int(args.period))
+    filters = appenddict(filters, "Trading_Period", args.period)
     filters = appenddict(filters, "Trading_Date", args.date)
     filters = appenddict(filters, "Company", args.company)
     filters = appenddict(filters, "Island_Name", args.island)
@@ -74,7 +70,10 @@ def parse_filters(args):
 
 def appenddict(d, key, value):
     if value is not None:
-        d[key] = value
+        if key == "Trading_Period":
+            d[key] = int(value)
+        else:
+            d[key] = value
     return d
 
 
@@ -128,10 +127,11 @@ def parse_tessen_args(args):
 
 
 def main():
-
     args = parse_tessen_args(sys.argv[1:])
     tessen(args)
 
 
 if __name__ == '__main__':
+
     main()
+

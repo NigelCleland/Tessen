@@ -90,6 +90,7 @@ def create_full_fan(energy, reserve):
 
 def plotfan(fancurve):
 
+
     # Create the Figure:
     fig, axes = plt.subplots(1,1, figsize=(16,9))
 
@@ -100,7 +101,7 @@ def plotfan(fancurve):
     reserve_labels = []
     for price, c in zip(reserve_prices, reserve_colours):
         st = fancurve[fancurve["Reserve_Price"] <= price].groupby(["Node", "Energy_Stack"], as_index=False)
-        agg = st.aggregate({"Incr_Reserve_Quantity": np.sum, "Incr_Energy_Quantity": np.max, "Price": np.max}).sort("Price")
+        agg = st.aggregate({"Incr_Reserve_Quantity": np.sum, "Incr_Energy_Quantity": np.max, "Price": np.max}).sort(columns=["Price", "Incr_Reserve_Quantity"], ascending=[True, False])
         agg["Cum_Energy"] = agg["Incr_Energy_Quantity"].cumsum()
         agg["Cum_Reserve"] =  agg["Incr_Reserve_Quantity"].cumsum()
 
@@ -133,10 +134,13 @@ def plotfan(fancurve):
     legend2 = axes.legend(energy_legend, energy_legend_labels, loc='upper left')
     plt.gca().add_artist(legend1)
 
-
-    ymax = reserve_range.max()
+    ymax = axes.get_ylim()[1]
     xmax = energy_range.max()
     axes.set_xlim(0, xmax+100)
+    axes.set_ylim(0, ymax)
+
+    axes.set_xlabel("Energy Offer [MW]", fontsize=18)
+    axes.set_ylabel("Reserve Offer [MW]", fontsize=18)
 
     return fig, axes
 
