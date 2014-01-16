@@ -103,9 +103,6 @@ def configure_energy_data(data, old_price, new_price):
     return energy_range, reserve_range
 
 
-
-
-
 def fan_visualisation(fancurve, reserve_prices=None, reserve_colour=cm.Blues,
                                 energy_prices=None, energy_colour=cm.YlOrRd):
     """ Create the fan curve visualisation

@@ -62,6 +62,7 @@ def create_feasible(percentage, maximum_reserve, maximum_energy):
 
 def station_fan(energy, reserve):
 
+    # If no reserve data exists just return the frame with zeros
     if len(reserve) == 0:
         energysort = energy[energy["Quantity"] > 0]
         incr_energy = incrementalise(energysort)
@@ -74,22 +75,22 @@ def station_fan(energy, reserve):
     incr_energy = incrementalise(energysort)
 
     maximum_energy = incr_energy["Max_Output"].values[0]
-    Dict = {}
+    bathtub = {}
 
     for i, (percent, price, quantity) in reserve_copy[["Percent",
                                 "Price", "Quantity"]].iterrows():
-        Dict[price] =  create_feasible(percent, quantity, maximum_energy)
+        bathtub[price] =  create_feasible(percent, quantity, maximum_energy)
         maximum_energy -= quantity
 
     stationf = []
-    for price in Dict:
-        resam = np.array(Dict[price].values())
+    for price in bathtub:
+        resam = np.array(bathtub[price].values())
         incr_re = resam[1:] - resam[:-1]
-        incr_dict = dict(zip(Dict[price].keys()[:-1], incr_re))
+        reserve_map = dict(zip(bathtub[price].keys()[:-1], incr_re))
         hold = incr_energy.copy()
         hold["Reserve_Price"] = price
-        hold["Reserve_Quantity"] = hold["Energy_Stack"].map(Dict[price])
-        hold["Incr_Reserve_Quantity"] = hold["Energy_Stack"].map(incr_dict)
+        hold["Reserve_Quantity"] = hold["Energy_Stack"].map(bathtub[price])
+        hold["Incr_Reserve_Quantity"] = hold["Energy_Stack"].map(reserve_map)
         hold["Reserve_Quantity"].fillna(0)
         stationf.append(hold)
 
