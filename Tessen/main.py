@@ -22,7 +22,7 @@ import fan
 import plot
 
 def tessen(args, reserve_prices=None, energy_prices=None):
-    """ Main Function
+    """ Main Function """
 
 
     # Load some default parameters in case simple arguments aren't

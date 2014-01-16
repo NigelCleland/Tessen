@@ -97,6 +97,21 @@ def station_fan(energy, reserve):
 
 
 def create_full_fan(energy, reserve):
+    def _create_fan(energy, reserve):
+        energy_hold = energy[energy["Quantity"] > 0]
+        for stat in energy_hold["Node"].unique():
+            single_energy = energy_hold[energy_hold["Node"] == stat]
+            single_reserve = reserve[reserve["Node"] == stat]
+
+            singlefan = station_fan(single_energy, single_reserve)
+            yield singlefan
+
+    return pd.concat(_create_fan(energy, reserve),
+                     ignore_index=True).fillna(0)
+
+
+
+def create_full_fanb(energy, reserve):
 
     energy_hold = energy[energy["Quantity"] > 0]
     df_objects = []
@@ -109,60 +124,3 @@ def create_full_fan(energy, reserve):
         df_objects.append(singlefan.copy())
 
     return pd.concat(df_objects, ignore_index=True).fillna(0)
-
-def plotfan(fancurve):
-
-
-    # Create the Figure:
-    fig, axes = plt.subplots(1,1, figsize=(16,9))
-
-    # Plot the Reserve Lines
-    reserve_prices = np.sort(fancurve["Reserve_Price"].unique())
-    reserve_colours = cm.Blues(np.linspace(0, 1, len(reserve_prices)))
-    reserve_legend = []
-    reserve_labels = []
-    for price, c in zip(reserve_prices, reserve_colours):
-        st = fancurve[fancurve["Reserve_Price"] <= price].groupby(["Node", "Energy_Stack"], as_index=False)
-        agg = st.aggregate({"Incr_Reserve_Quantity": np.sum, "Incr_Energy_Quantity": np.max, "Price": np.max}).sort(columns=["Price", "Incr_Reserve_Quantity"], ascending=[True, False])
-        agg["Cum_Energy"] = agg["Incr_Energy_Quantity"].cumsum()
-        agg["Cum_Reserve"] =  agg["Incr_Reserve_Quantity"].cumsum()
-
-        rl = axes.plot(agg["Cum_Energy"], agg["Cum_Reserve"], label=price, color=c, linewidth=2)
-        reserve_legend.append(rl[0])
-        reserve_labels.append(price)
-
-    # Plot the Energy Colours...
-    price_increments = np.sort(agg["Price"].unique())
-    price_colours = cm.YlOrRd(np.linspace(0, 1, len(price_increments)))
-    old_price = 0
-    energy_legend = []
-    energy_legend_labels = []
-    for price, c in zip(price_increments, price_colours):
-
-        sub_price = agg[(agg["Price"] >= old_price) & (agg["Price"] <= price)]
-
-        energy_range = sub_price["Cum_Energy"].values
-        reserve_range = sub_price["Cum_Reserve"].values
-        reserve_zeroes = np.zeros(len(reserve_range))
-
-        axes.fill_between(energy_range, reserve_zeroes, reserve_range, alpha=0.5, color=c)
-        ll = axes.plot([0,0],[0,0], color=c, label=price)
-        energy_legend.append(ll[0])
-        energy_legend_labels.append(price)
-
-        old_price = price
-
-    legend1 = axes.legend(reserve_legend, reserve_labels, loc='upper right')
-    legend2 = axes.legend(energy_legend, energy_legend_labels, loc='upper left')
-    plt.gca().add_artist(legend1)
-
-    ymax = axes.get_ylim()[1]
-    xmax = energy_range.max()
-    axes.set_xlim(0, xmax+100)
-    axes.set_ylim(0, ymax)
-
-    axes.set_xlabel("Energy Offer [MW]", fontsize=18)
-    axes.set_ylabel("Reserve Offer [MW]", fontsize=18)
-
-    return fig, axes
-
