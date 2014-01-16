@@ -3,6 +3,8 @@ import numpy as np
 import sys
 import os
 import datetime
+import matplotlib.pyplot as plt
+import matplotlib.cm as cm
 
 #import OfferPandas
 
@@ -77,8 +79,8 @@ def create_full_fan(energy, reserve):
     energy_hold = energy[energy["Quantity"] > 0]
     df_objects = []
 
-    for stat in energy["Node"].unique():
-        single_energy = energy[energy["Node"] == stat]
+    for stat in energy_hold["Node"].unique():
+        single_energy = energy_hold[energy_hold["Node"] == stat]
         single_reserve = reserve[reserve["Node"] == stat]
 
         singlefan = station_fan(single_energy, single_reserve)

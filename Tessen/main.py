@@ -18,12 +18,68 @@ import seaborn as sns
 
 # OfferPandas
 import OfferPandas
+import fans
 
-def tessen():
-    pass
+def tessen(args):
+
+    if args.energy_filename is None:
+        raise ValueError("You must pass an energy offer file")
+
+    if args.genres_filename is None:
+        raise ValueError("You must pass a generator reserve offer file")
+
+    if args.period is None:
+        raise ValueError("You must pass a period")
+
+    if args.island is None:
+        raise ValueError("You must pass an island")
+
+    # Load the files
+    Energy = OfferPandas.load_offerframe(args.energy_filename)
+    Reserve = OfferPandas.load_offerframe(args.genres_filename)
+
+    # Parse the Filters
+    reserve_filters = parse_filters(args)
+
+    # Energy Filters is a subset of Reserve filters without the PLSR/FIR/SIR
+    energy_filters = reserve_filters.copy()
+    energy_filters.pop("Reserve_Type")
+    energy_filters.pop("Product_Type")
+
+    # Filter the
+    filt_energy = Energy.efilter(energy_filters)
+    filt_reserve = Reserve.efilter(reserve_filters)
+
+    fan = fans.create_full_fan(filt_energy, filt_reserve)
+
+    fans.plotfan(fan)
+    plt.show()
+
+
+
+def parse_filters(args):
+
+    filters = {}
+
+    filters = appenddict(filters, "Trading_Period", int(args.period))
+    filters = appenddict(filters, "Trading_Date", args.date)
+    filters = appenddict(filters, "Company", args.company)
+    filters = appenddict(filters, "Island_Name", args.island)
+    filters = appenddict(filters, "Station", args.station)
+    filters = appenddict(filters, "Reserve_Type", args.reserve_type)
+    filters = appenddict(filters, "Product_Type", args.product_type)
+
+    return filters
+
+
+def appenddict(d, key, value):
+    if value is not None:
+        d[key] = value
+    return d
+
 
 def parse_tessen_args(args):
-
+    """ Parse Command Line Arguments """
 
     parser = argparse.ArgumentParser(
         description='Tessen, a fan curve generator')
@@ -60,14 +116,22 @@ def parse_tessen_args(args):
         '-gf', '--genres_filename',
         help="Filename of the Generator Reserve data")
 
+    parser.add_argument(
+        '-rt', '--reserve_type',
+        help="FIR or SIR, type of Reserve")
+
+    parser.add_argument(
+        '-pt', '--product_type',
+        help="Reserve Product, PLSR or TWDSR")
+
     return parser.parse_args(args)
 
 
 def main():
 
     args = parse_tessen_args(sys.argv[1:])
+    tessen(args)
 
-    print args
 
 if __name__ == '__main__':
     main()
