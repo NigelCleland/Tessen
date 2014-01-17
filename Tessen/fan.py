@@ -18,7 +18,7 @@ def incrementalise(frame):
 
     This is used to make mapping energy and reserve offers together simpler.
 
-    Paremeters
+    Parameters
     ----------
     frame: OfferPandas.Frame object
 
@@ -29,9 +29,6 @@ def incrementalise(frame):
     """
 
     def _yield_increment(frame):
-        """ Generator function which yields individuals series which can be
-        concatted together.
-        """
         frame["Incr_Energy_Quantity"] = 1
         for index, series in frame.iterrows():
             quantity = series["Quantity"]
@@ -50,6 +47,28 @@ def incrementalise(frame):
 
 
 def create_feasible(percentage, maximum_reserve, maximum_energy):
+    """ Create a dictionary mapping energy dispatch and reserve dispatch
+    together for given parameters. This is done for each reserve price
+    which may then be aggregated together by comparing the stacks in the
+    fan curve:
+
+    Parameters
+    ----------
+    percentage: float of the form xx.x note not a that decimal representation
+    maximum_reserve: float, maximum limit on the amount of reserve
+    maximum_energy: float, maximum (available) limit on energy, nameplate
+                    capacity. Note in reality this capacity is adjusted down
+                    as you move higher up the reserve stack as additional
+                    reserve must be taken into account. This can lead to
+                    gaps in the level of reserve which are filled with the
+                    fillna function later.
+
+    Returns
+    -------
+    Dictionary mapping an integer energy line with an equivalent reserve
+    dispatch
+
+    """
 
     capacity_line = np.arange(1, maximum_energy+1)
     reserve_line = capacity_line * percentage / 100.
