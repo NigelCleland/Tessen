@@ -128,19 +128,3 @@ def create_full_fan(energy, reserve):
 
     return pd.concat(_create_fan(energy, reserve),
                      ignore_index=True).fillna(0)
-
-
-
-def create_full_fanb(energy, reserve):
-
-    energy_hold = energy[energy["Quantity"] > 0]
-    df_objects = []
-
-    for stat in energy_hold["Node"].unique():
-        single_energy = energy_hold[energy_hold["Node"] == stat]
-        single_reserve = reserve[reserve["Node"] == stat]
-
-        singlefan = station_fan(single_energy, single_reserve)
-        df_objects.append(singlefan.copy())
-
-    return pd.concat(df_objects, ignore_index=True).fillna(0)
