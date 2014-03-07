@@ -16,6 +16,11 @@ def station_fan(energy, reserve):
 
     Parameters:
     -----------
+    energy: Energy OfferFrame containing the information about a single
+            station and trading period
+
+    reserve: PLSR OfferFrame containing the informaiton about a single
+            station, trading period and reserve type, note TWDSR should work.
 
     Returns:
     --------
@@ -44,9 +49,9 @@ def station_fan(energy, reserve):
     nonzero_reserve = reserve[reserve["Quantity"] > 0]
 
     band_stacks = []
-    for (percent, price, quantity,
-         reserve_type, product_type) in nonzero_reserve[["Percent", "Price",
-                        "Quantity", "Reserve_Type", "Product_Type"]]:
+    for (index, percent, price, quantity, reserve_type, product_type
+        ) in nonzero_reserve[["Percent", "Price", "Quantity", "Reserve_Type",
+                             "Product_Type"]].itertuples():
 
         # Check for TWDSR, set percent to essentially infinity.
         if product_type == "TWDSR":
@@ -56,22 +61,21 @@ def station_fan(energy, reserve):
                                                 percent, nameplate_capacity,
                                                 remaining_capacity)
 
+
         # Update the remaining capacity
         remaining_capacity -= quantity
 
         # Create a Band DataFrame
         band_df = band_dataframe(reserve_stack, station_metadata, reserve_type,
-                                 product_type)
+                                 product_type, percent)
 
         band_stacks.append(band_df)
 
     return pd.concat(band_stacks)
 
 
-
-
 def band_dataframe(full_stack, station_metadata, reserve_type,
-                      product_type):
+                      product_type, percent):
     """ Creates a DataFrame for a single band taking into account the full
     stack along with the metadata for it.
     Returns this DataFrame which may then be added together to create the
@@ -80,8 +84,9 @@ def band_dataframe(full_stack, station_metadata, reserve_type,
 
 
     full_metadata = station_metadata.copy()
-    full_metadata["Reserve_Type"] == reserve_type
-    full_metadata["Product_Type"] == product_type
+    full_metadata["Reserve_Type"] = reserve_type
+    full_metadata["Product_Type"] = product_type
+    full_metadata["Reserve_Percent"] = percent
 
     columns = ["Energy Price", "Energy Quantity",
                "Incremental Energy Quantity", "Cumulative Energy Quantity",
@@ -92,8 +97,8 @@ def band_dataframe(full_stack, station_metadata, reserve_type,
     df = pd.DataFrame(full_stack, columns=columns)
 
     # Add the metadata
-    for key, value in full_metadata:
-        df[key] == value
+    for key, value in full_metadata.iteritems():
+        df[key] = value
 
     return df
 
@@ -188,6 +193,8 @@ def feasible_reserve_region(stack, res_price, res_quantity, res_percent,
 
 
     length = stack.shape[0]
+    # Get the largest energy value
+    max_energy = stack[-1,3]
 
     # Update the capacity line to be of the size of the full capacity but
     # shifted to reflect what capacity has already been used by cheaper reserve
@@ -196,8 +203,10 @@ def feasible_reserve_region(stack, res_price, res_quantity, res_percent,
     capacity_line[:remaining_capacity+1] = np.arange(0,
             remaining_capacity+1)[::-1]
 
+    capacity_line = capacity_line[:max_energy+1]
+
     # Create a line due to the
-    reserve_line = stack[:,3] * res_percent
+    reserve_line = stack[:,3] * res_percent /100.
     reserve_line = np.where(reserve_line <= res_quantity, reserve_line,
                             res_quantity)
     # Adjust for the modified capacity line
@@ -216,7 +225,6 @@ def feasible_reserve_region(stack, res_price, res_quantity, res_percent,
     reserve_coupling[:, 5] = res_quantity
     reserve_coupling[:, 6] = incremental_reserve_line
     reserve_coupling[:, 7] = reserve_line
-
 
     return reserve_coupling
 
