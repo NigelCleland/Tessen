@@ -216,6 +216,44 @@ be a Nx2 array, current size is %sx%s" % pairs.shape)
 
     return stack
 
+def incre_energy_stack(pairs):
+
+    if pairs.shape[1] != 2:
+        raise ValueError("Shape of the array passed to the function must\
+be a Nx2 array, current size is %sx%s" % pairs.shape)
+
+    partial_arrays = [np.zeros((1,4))]
+    for p, q in pairs:
+        # Incremental Capacity
+        partial = np.zeros((np.ceil(q), 4))
+        partial[:,2] = np.ones(np.ceil(q))
+        if np.ceil(q) != q:
+            partial[-1, 2] = q % 1
+
+        # Price and Quantity
+        partial[:,0] = p
+        partial[:,1] = q
+        partial_arrays.append(partial)
+
+    full_array = np.concatenate(partial_arrays)
+    full_array[:,3] = np.cumsum(full_array[:,2])
+    return full_array
+
+
+def feas_reserve_region(stack, res_price, res_quantity, res_percent,
+                            nameplate_capacity, remaining_capacity):
+
+    length = stack.shape[0]
+    max_energy = stack[-1, 3]
+    capacity_line = stack[:,3][::-1]
+
+    # Add the difference to the capacity line to get the free capacity
+    if nameplate_capacity >= max_energy:
+        capacity_line = capacity_line + (nameplate_capacity - max_energy)
+
+
+
+
 def feasible_reserve_region(stack, res_price, res_quantity, res_percent,
                             nameplate_capacity, remaining_capacity):
     """
@@ -257,7 +295,8 @@ def feasible_reserve_region(stack, res_price, res_quantity, res_percent,
 
     capacity_line = capacity_line[:max_energy+1]
 
-    # Create a line due to the
+    # Create a line due to the proportionality constraint.
+    # Note percentages are reported as is...
     reserve_line = stack[:,3] * res_percent /100.
     reserve_line = np.where(reserve_line <= res_quantity, reserve_line,
                             res_quantity)
