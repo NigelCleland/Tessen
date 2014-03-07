@@ -243,13 +243,61 @@ be a Nx2 array, current size is %sx%s" % pairs.shape)
 def feas_reserve_region(stack, res_price, res_quantity, res_percent,
                             nameplate_capacity, remaining_capacity):
 
+    """
+    Create a feasible region array with information about energy and reserve
+    prices for a single band. This array contains information on an incremental
+    fashion regarding the energy and reserve tradeoff. Ideally should keep
+    all of the data together in one place:
+
+    Parameters:
+    -----------
+    stack: The full energy stack as previously calculated.
+    res_price: The band reserve price
+    res_quantity: Maximum band reserve quantity
+    res_percent: The percentage for the reserve band, note TWDSR will be
+                 arbitrarily high
+    nameplate_capacity: The original capacity (nameplate) of the unit
+    remaining_capacity: Subtracting the reserve bands at lower price quantities
+                        from the nameplate capacity to leave a residual
+                        quantity
+
+
+    Returns:
+    --------
+    reserve_coupling: numpy array of energy and reserve values.
+
+    """
+
     length = stack.shape[0]
     max_energy = stack[-1, 3]
-    capacity_line = stack[:,3][::-1]
+    utilised_capacity = nameplate_capacity - remaining_capacity
+    capacity_line = nameplate_capacity - stack[:,3]
+    capacity_line = np.where(capacity_line - utilised_capacity <= 0,
+                             0, capacity_line - utilised_capacity)
 
-    # Add the difference to the capacity line to get the free capacity
-    if nameplate_capacity >= max_energy:
-        capacity_line = capacity_line + (nameplate_capacity - max_energy)
+    # Create a line due to the proportionality constraint.
+    # Note percentages are reported as is...
+    reserve_line = stack[:,3] * res_percent /100.
+    reserve_line = np.where(reserve_line <= res_quantity, reserve_line,
+                            res_quantity)
+    # Adjust for the modified capacity line
+    reserve_line = np.where(reserve_line <= capacity_line, reserve_line,
+                            capacity_line)
+
+    # Create an incremental reserve line as well
+    incremental_reserve_line = np.zeros(len(reserve_line))
+    incremental_reserve_line[1:] = reserve_line[1:] - reserve_line[:-1]
+
+
+    # Create a new array and add the values
+    reserve_coupling = np.zeros((length, 8))
+    reserve_coupling[:, :4] = stack
+    reserve_coupling[:, 4] = res_price
+    reserve_coupling[:, 5] = res_quantity
+    reserve_coupling[:, 6] = incremental_reserve_line
+    reserve_coupling[:, 7] = reserve_line
+
+    return reserve_coupling
 
 
 
