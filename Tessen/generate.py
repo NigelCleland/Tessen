@@ -10,6 +10,26 @@ import sys
 import os
 import datetime
 
+def create_fan(energy, reserve):
+    """
+
+    """
+
+    station_dates = energy[["Node", "Trading_Period_ID"]].drop_duplicates()
+    fan_assembly = []
+
+    for index, station, tpid in station_dates.itertuples():
+        print index, station, tpid
+        single_energy = energy.efilter(Trading_Period_ID=tpid,
+                               Node=station)
+        for reserve_type in ("FIR", "SIR"):
+            single_reserve = reserve.efilter(Trading_Period_ID=tpid,
+                        Node=station, Reserve_Type=reserve_type)
+
+            fan_assembly.append(station_fan(single_energy, single_reserve))
+
+    return pd.concat(fan_assembly, ignore_index=True)
+
 def station_fan(energy, reserve):
     """ Create the fan information for a given station and single reserve type.
     If multiple reserve types are passed this will fail miserably.
@@ -28,7 +48,21 @@ def station_fan(energy, reserve):
                particular station.
 
     """
+    energy = energy[energy["Quantity"] > 0]
+
+    if len(energy) == 0:
+        return None
+
     station_metadata = get_station_metadata(energy)
+
+    # Do an check just in case the reserve is equal to zero.
+    # Will return an energy only version, all reserve set to zero.
+    # Don't need to concat there should only be a single version.
+    if len(reserve) == 0:
+        energy_version = energy_only(energy)
+        full_metadata = update_metadata(station_metadata, None, None, 0)
+        return band_dataframe(energy_version, full_metadata)
+
 
     if len(reserve["Reserve_Type"].unique()) > 1:
         raise ValueError("Must only pass a single Reserve Type, you passed\
@@ -42,11 +76,15 @@ def station_fan(energy, reserve):
     # Get the nameplate capacity of the station, all values are duplicates
     # so we just take the first one. Set initial remaining capacity equal to
     # the nameplate capacity
-    nameplate_capacity = energy["Max_Output"].values[0]
-    remaining_capacity = nameplate_capacity
+    nameplate_capacity = remaining_capacity = energy["Max_Output"].values[0]
 
     # Filter Reserve Offers, create a band stack for each pairing
     nonzero_reserve = reserve[reserve["Quantity"] > 0]
+    if len(nonzero_reserve) == 0:
+        energy_version = energy_only(energy)
+        full_metadata = update_metadata(station_metadata, None, None, 0)
+        return band_dataframe(energy_version, full_metadata)
+
 
     band_stacks = []
     for (index, percent, price, quantity, reserve_type, product_type
@@ -61,32 +99,46 @@ def station_fan(energy, reserve):
                                                 percent, nameplate_capacity,
                                                 remaining_capacity)
 
-
         # Update the remaining capacity
         remaining_capacity -= quantity
 
         # Create a Band DataFrame
-        band_df = band_dataframe(reserve_stack, station_metadata, reserve_type,
+        full_metadata = update_metadata(station_metadata, reserve_type,
                                  product_type, percent)
 
+        band_df = band_dataframe(reserve_stack, full_metadata)
         band_stacks.append(band_df)
 
-    return pd.concat(band_stacks)
+    try:
+        return pd.concat(band_stacks)
+    except:
+        print band_stacks, len(energy), len(reserve), station_metadata
 
+def energy_only(energy):
+    sorted_energy = energy.sort("Price")
+    energy_stack = incremental_energy_stack(
+                sorted_energy[["Price", "Quantity"]].values)
 
-def band_dataframe(full_stack, station_metadata, reserve_type,
-                      product_type, percent):
+    length = energy_stack.shape[0]
+    energy_version = np.zeros((length, 8))
+    energy_version[:, :4] = energy_stack
+
+    return energy_version
+
+def update_metadata(station_metadata, reserve_type, product_type, percent):
+    full_metadata = station_metadata.copy()
+    full_metadata["Reserve_Type"] = reserve_type
+    full_metadata["Product_Type"] = product_type
+    full_metadata["Reserve_Percent"] = percent
+
+    return full_metadata
+
+def band_dataframe(full_stack, full_metadata):
     """ Creates a DataFrame for a single band taking into account the full
     stack along with the metadata for it.
     Returns this DataFrame which may then be added together to create the
     station frame.
     """
-
-
-    full_metadata = station_metadata.copy()
-    full_metadata["Reserve_Type"] = reserve_type
-    full_metadata["Product_Type"] = product_type
-    full_metadata["Reserve_Percent"] = percent
 
     columns = ["Energy Price", "Energy Quantity",
                "Incremental Energy Quantity", "Cumulative Energy Quantity",
