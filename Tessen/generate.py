@@ -11,8 +11,14 @@ import os
 import datetime
 
 def create_fan(energy, reserve):
-    """
+    """Given an energy and reserve offer frame, PLSR, will construct the
+    full fan curve for these on a station by station, band by band and by
+    reserve type.
 
+    These fans may then be filtered and visualised using the visualise
+    functionality.
+
+    Paramte
     """
 
     station_dates = energy[["Node", "Trading_Period_ID"]].drop_duplicates()
@@ -109,12 +115,12 @@ def station_fan(energy, reserve):
         band_df = band_dataframe(reserve_stack, full_metadata)
         band_stacks.append(band_df)
 
-    try:
-        return pd.concat(band_stacks)
-    except:
-        print band_stacks, len(energy), len(reserve), station_metadata
+    return pd.concat(band_stacks)
 
 def energy_only(energy):
+    """ Mimics the fan curve for an energy only station by setting all
+    reserve poritons of the stack to zero.
+    """
     sorted_energy = energy.sort("Price")
     energy_stack = incremental_energy_stack(
                 sorted_energy[["Price", "Quantity"]].values)
@@ -180,6 +186,7 @@ def get_station_metadata(offer_data):
 
     return meta_data
 
+
 def incremental_energy_stack(pairs):
     """ Takes an array of price quantity pairs and returns a numpy array
     of this transformed into a single increment version (using step size 1)
@@ -195,28 +202,6 @@ def incremental_energy_stack(pairs):
             Cumulative Quantity)
 
     """
-
-    if pairs.shape[1] != 2:
-        raise ValueError("Shape of the array passed to the function must\
-be a Nx2 array, current size is %sx%s" % pairs.shape)
-
-    total_offer = sum(pairs[:,1])
-    stack = np.zeros((total_offer+1, 4))
-    # Incremental Offer Columns
-    stack[1:,2] = np.ones(total_offer)
-    # Cumulative Offer Column
-    stack[:,3] = np.arange(0, total_offer+1)
-    # Price, Quantity Columns
-    qprev = 1
-    for p, q in pairs:
-        stack[qprev:qprev+q,0] = p
-        stack[qprev:qprev+q,1] = q
-
-        qprev += q
-
-    return stack
-
-def incre_energy_stack(pairs):
 
     if pairs.shape[1] != 2:
         raise ValueError("Shape of the array passed to the function must\
@@ -240,70 +225,9 @@ be a Nx2 array, current size is %sx%s" % pairs.shape)
     return full_array
 
 
-def feas_reserve_region(stack, res_price, res_quantity, res_percent,
-                            nameplate_capacity, remaining_capacity):
-
-    """
-    Create a feasible region array with information about energy and reserve
-    prices for a single band. This array contains information on an incremental
-    fashion regarding the energy and reserve tradeoff. Ideally should keep
-    all of the data together in one place:
-
-    Parameters:
-    -----------
-    stack: The full energy stack as previously calculated.
-    res_price: The band reserve price
-    res_quantity: Maximum band reserve quantity
-    res_percent: The percentage for the reserve band, note TWDSR will be
-                 arbitrarily high
-    nameplate_capacity: The original capacity (nameplate) of the unit
-    remaining_capacity: Subtracting the reserve bands at lower price quantities
-                        from the nameplate capacity to leave a residual
-                        quantity
-
-
-    Returns:
-    --------
-    reserve_coupling: numpy array of energy and reserve values.
-
-    """
-
-    length = stack.shape[0]
-    max_energy = stack[-1, 3]
-    utilised_capacity = nameplate_capacity - remaining_capacity
-    capacity_line = nameplate_capacity - stack[:,3]
-    capacity_line = np.where(capacity_line - utilised_capacity <= 0,
-                             0, capacity_line - utilised_capacity)
-
-    # Create a line due to the proportionality constraint.
-    # Note percentages are reported as is...
-    reserve_line = stack[:,3] * res_percent /100.
-    reserve_line = np.where(reserve_line <= res_quantity, reserve_line,
-                            res_quantity)
-    # Adjust for the modified capacity line
-    reserve_line = np.where(reserve_line <= capacity_line, reserve_line,
-                            capacity_line)
-
-    # Create an incremental reserve line as well
-    incremental_reserve_line = np.zeros(len(reserve_line))
-    incremental_reserve_line[1:] = reserve_line[1:] - reserve_line[:-1]
-
-
-    # Create a new array and add the values
-    reserve_coupling = np.zeros((length, 8))
-    reserve_coupling[:, :4] = stack
-    reserve_coupling[:, 4] = res_price
-    reserve_coupling[:, 5] = res_quantity
-    reserve_coupling[:, 6] = incremental_reserve_line
-    reserve_coupling[:, 7] = reserve_line
-
-    return reserve_coupling
-
-
-
-
 def feasible_reserve_region(stack, res_price, res_quantity, res_percent,
                             nameplate_capacity, remaining_capacity):
+
     """
     Create a feasible region array with information about energy and reserve
     prices for a single band. This array contains information on an incremental
@@ -329,19 +253,15 @@ def feasible_reserve_region(stack, res_price, res_quantity, res_percent,
 
     """
 
-
     length = stack.shape[0]
-    # Get the largest energy value
-    max_energy = stack[-1,3]
 
     # Update the capacity line to be of the size of the full capacity but
     # shifted to reflect what capacity has already been used by cheaper reserve
     # offers.
-    capacity_line = np.zeros((nameplate_capacity+1))
-    capacity_line[:remaining_capacity+1] = np.arange(0,
-            remaining_capacity+1)[::-1]
-
-    capacity_line = capacity_line[:max_energy+1]
+    utilised_capacity = nameplate_capacity - remaining_capacity
+    capacity_line = nameplate_capacity - stack[:,3]
+    capacity_line = np.where(capacity_line - utilised_capacity <= 0,
+                             0, capacity_line - utilised_capacity)
 
     # Create a line due to the proportionality constraint.
     # Note percentages are reported as is...
