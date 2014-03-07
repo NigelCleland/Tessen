@@ -9,8 +9,56 @@ from OfferPandas import Frame, load_offerframe
 import sys
 import os
 import datetime
+import time
 
-def create_fan(energy, reserve):
+
+def create_fan(energy, reserve, fName=None, return_fan=True, break_tp=False,
+                *args, **kargs):
+    """ A wrapper which implements some optional filtering arguments
+    to speed up the process, otherwise iterating can take a very large time.
+
+    Can handle the breakdown as well into trading period pieces.
+    """
+
+    # Set up a time reporting function:
+    begin_time = datetime.datetime.now()
+
+
+    filtered_energy = energy.efilter(*args, **kargs)
+    filtered_reserve = reserve.efilter(*args, **kargs)
+    estimate_number = len(filtered_energy[["Node", "Trading_Period_ID"]].drop_duplicates()) * 2
+    print """I'm beginning to create fan curves, I estimate I'll need to do
+at least %s of these which may take at least %s seconds, hold tight""" % (
+            estimate_number, estimate_number * 0.008)
+
+
+    fan = _create_fan(filtered_energy, filtered_reserve)
+
+    elapsed_time = datetime.datetime.now() - begin_time
+    number_fans = len(fan[["Node", "Trading_Period_ID", "Reserve_Type",
+                           "Reserve Price"]].drop_duplicates())
+    print "I successfully calculated %s fans in %s seconds" % (number_fans,
+                 elapsed_time.seconds)
+
+    if fName:
+        if break_tp:
+            print "I'll now begin saving these to individual trading period files"
+            for each in fan["Trading_Period_ID"].unique():
+                single = fan[fan["Trading_Period_ID"] == each]
+                new_ext = '_' + str(each) + '.csv'
+                single_name = fName.replace('.csv', new_ext)
+                single.to_csv(single_name, header=True, index=False)
+
+        else:
+            print "I'll now begin saving these to a single file"
+            fan.to_csv(fName, header=True, index=False)
+
+    if return_fan:
+        return fan
+
+    return None
+
+def _create_fan(energy, reserve):
     """Given an energy and reserve offer frame, PLSR, will construct the
     full fan curve for these on a station by station, band by band and by
     reserve type.
@@ -18,14 +66,21 @@ def create_fan(energy, reserve):
     These fans may then be filtered and visualised using the visualise
     functionality.
 
-    Paramte
+    Parameters:
+    -----------
+    energy: An energy offer frame, fans will be created for every permutation
+            in this frame.
+    reserve: The corresponding reserve offer frame.
+
+    Returns
+    -------
+    DataFrame: A DataFrame containing the fan object
     """
 
     station_dates = energy[["Node", "Trading_Period_ID"]].drop_duplicates()
     fan_assembly = []
 
     for index, station, tpid in station_dates.itertuples():
-        print index, station, tpid
         single_energy = energy.efilter(Trading_Period_ID=tpid,
                                Node=station)
         for reserve_type in ("FIR", "SIR"):
