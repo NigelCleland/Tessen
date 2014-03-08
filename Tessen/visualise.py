@@ -17,10 +17,11 @@ from collections import defaultdict
 
 
 # Apply some nicer plotting options to improve the visualisation.
-mplconfig = json.loads(os.path.join(Tessen.__path__[0],
-                       "_static/plot_options.json"))
+path = os.path.join(Tessen.__path__[0], "_static/plot_options.json")
+with open(path) as f:
+    mplconfig = json.load(f)
 
-for key, value in mplconfig:
+for key, value in mplconfig.iteritems():
     mpl.rcParams[key] = value
 
 
@@ -55,7 +56,7 @@ def plot_fan(data, filters, fName=None):
     filtered = frame.efilter(filters)
 
     # Check that the output won't be nonsense, e.g. multiple periods, islands
-    _check_consistency(filtered)
+    _check_consistency(flitered)
 
     # Aggregate the data
     aggregated_data = _aggregate(filtered)
@@ -131,6 +132,38 @@ def _aggregate(filtered, il_data=None):
     aggregated_data = defaultdict(dict)
 
     return None
+
+def _construct_reserve_dictionary(data, price_increments=None):
+
+    if not price_increments:
+        price_increments = data["Reserve Price"].unique()
+
+    reserve_accumulations = {}
+
+    for rp in price_increments:
+        subset = data[data["Reserve Price"] <= rp]
+        reserve_accumulations[rp] = _construct_reserve_line(subset)
+
+    return reserve_accumulations
+
+def _construct_reserve_line(data)::
+    aggregations = {"Incremental Reserve Quantity": np.sum,
+                    "Incremental Energy Quantity": np.max,
+                    "Energy Price": np.max}
+
+    energy_line = "Incremental Energy Quantity"
+    reserve_line = "Incremental Reserve Quantity"
+
+    group_columns = ["Node", "Cumulative Energy Quantity"]
+
+    sort_columns = ["Energy Price", "Incremental Reserve Quantity"]
+    ascending = [True, False]
+
+`   agg = data.groupby(group_columns, as_index=False).aggregate(aggregations)
+    sort_data = agg.sort_columns(columns=sort_columns, ascending=ascending)
+    return sort_data[energy_line].cumsum(), sort_data[reserve_line].cumsum()
+
+
 
 
 def _generate_plot(aggregated_data):
