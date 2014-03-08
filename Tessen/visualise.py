@@ -134,7 +134,9 @@ def _aggregate(filtered, il_data=None):
     return None
 
 def _construct_reserve_dictionary(data, price_increments=None):
+    """
 
+    """
     if not price_increments:
         price_increments = data["Reserve Price"].unique()
 
@@ -146,7 +148,16 @@ def _construct_reserve_dictionary(data, price_increments=None):
 
     return reserve_accumulations
 
-def _construct_reserve_line(data)::
+def _construct_reserve_line(data):
+    """ Construct an energy and reserve line pairing and returns the values
+    These should be increased in energy price to illustrate the fan curve
+    trade off behaviour.
+
+    May need to modify this to introduce some baseline behaviour, e.g.
+    if all of the reserve offers are greater than the reserve price the energy
+    offers may be excluded??
+
+    """
     aggregations = {"Incremental Reserve Quantity": np.sum,
                     "Incremental Energy Quantity": np.max,
                     "Energy Price": np.max}
