@@ -1,4 +1,10 @@
+""" Python based visualisation method to work on the generic fan
+data which has already been produced.
 
+Intended to separate the two so that an interactive JS version of this plot
+could be produced at some point.
+
+"""
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -7,6 +13,7 @@ from OfferPandas import Frame
 import simplejson as json
 import os
 import Tessen
+from collections import defaultdict
 
 
 # Apply some nicer plotting options to improve the visualisation.
@@ -50,8 +57,11 @@ def plot_fan(data, filters, fName=None):
     # Check that the output won't be nonsense, e.g. multiple periods, islands
     _check_consistency(filtered)
 
+    # Aggregate the data
+    aggregated_data = _aggregate(filtered)
+
     # Generate the Plots
-    fig, axes = _generate_plot(filtered)
+    fig, axes = _generate_plot(aggregated_data)
 
     if fName:
         fig.savefig(fName)
@@ -98,7 +108,32 @@ def _check_consitency(filtered):
     # Return None if no errors are raised
     return None
 
-def _generate_plot(filtered):
+def _aggregate(filtered, il_data=None):
+    """ Aggregate the data together once all of the filters have been applied:
+    This is the entirety of the 'logic' for this module,
+
+    Parameters
+    ----------
+    filtered: The filtered data to be aggregated
+    il_data: Optional - Apply the IL stack to the reserve lines as well.
+
+    Returns:
+    --------
+    aggregated_data: Aggregated data ready for plotting and visualisation
+        Is a dictionary with two levels, reserve data and energy data
+        the reserve data level is further indexed by reserve price with
+        and accompanying energy - reserve offer line
+
+        the energy data is the offer - price tradeoff which is used
+        to construct the shading and legend for the energy offers.
+    """
+
+    aggregated_data = defaultdict(dict)
+
+    return None
+
+
+def _generate_plot(aggregated_data):
     """ Generate the plot figure
 
     """
@@ -106,8 +141,14 @@ def _generate_plot(filtered):
     fig, axes = plt.subplots(1, 1)
 
 
-def _plot_reserve_contour()
+def _plot_reserve_contours(axes, data):
+    """ Non publically exposed function, this plots the reserve lines in
+    ascending fashion.
 
+    """
 
+    return None
 
+def _plot_energy_shading(axes, data):
 
+    return None
