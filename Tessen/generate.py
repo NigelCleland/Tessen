@@ -13,11 +13,17 @@ import time
 
 
 def create_fan(energy, reserve, fName=None, return_fan=True, break_tp=False,
-                *args, **kargs):
+               force_plsr_only=True, *args, **kargs):
     """ A wrapper which implements some optional filtering arguments
     to speed up the process, otherwise iterating can take a very large time.
 
     Can handle the breakdown as well into trading period pieces.
+
+    Parameters:
+    -----------
+
+    Returns:
+    --------
     """
 
     # Set up a time reporting function:
@@ -25,8 +31,18 @@ def create_fan(energy, reserve, fName=None, return_fan=True, break_tp=False,
 
 
     filtered_energy = energy.efilter(*args, **kargs)
-    filtered_reserve = reserve.efilter(*args, **kargs)
-    estimate_number = len(filtered_energy[["Node", "Trading_Period_ID"]].drop_duplicates()) * 2
+    if force_plsr_only:
+        filtered_reserve = reserve.efilter(Product_Type="PLSR", *args, **kargs)
+    else:
+        print """Warning, TWDSR is still a little funky and the visualisation
+        of it in a composite fan diagram can be misleading. Most notably it
+        is difficult to show how it integrates when PLSR is also
+        dispatched\n"""
+        filtered_reserve = reserve.efilter(*args, **kargs)
+
+
+    estimate_number = len(filtered_energy[["Node",
+                            "Trading_Period_ID"]].drop_duplicates()) * 2
     print """I'm beginning to create fan curves, I estimate I'll need to do
 at least %s of these which may take at least %s seconds, hold tight""" % (
             estimate_number, estimate_number * 0.008)
@@ -121,7 +137,7 @@ def station_fan(energy, reserve, assumed_reserve=None):
     # Will return an energy only version, all reserve set to zero.
     # Don't need to concat there should only be a single version.
     if len(reserve) == 0:
-        return energy_stack(energy, station_metadata,
+        return create_energy_stack(energy, station_metadata,
                             assumed_reserve=assumed_reserve)
 
     if len(reserve["Reserve_Type"].unique()) > 1:
@@ -141,7 +157,7 @@ def station_fan(energy, reserve, assumed_reserve=None):
     # Filter Reserve Offers, create a band stack for each pairing
     nonzero_reserve = reserve[reserve["Quantity"] > 0]
     if len(nonzero_reserve) == 0:
-        return energy_stack(energy, station_metadata,
+        return create_energy_stack(energy, station_metadata,
                             assumed_reserve=assumed_reserve)
 
     # Do a check for zero priced reserve offers here,
@@ -151,7 +167,7 @@ def station_fan(energy, reserve, assumed_reserve=None):
     # But the tradeoff is a small one.
     band_stacks = []
     if 0. not in nonzero_reserve["Price"]:
-        band_stacks.append(energy_stack(energy, station_metadata,
+        band_stacks.append(create_energy_stack(energy, station_metadata,
                                  assumed_reserve=assumed_reserve))
 
     for (index, percent, price, quantity, reserve_type, product_type
@@ -164,7 +180,8 @@ def station_fan(energy, reserve, assumed_reserve=None):
 
         reserve_stack = feasible_reserve_region(energy_stack, price, quantity,
                                                 percent, nameplate_capacity,
-                                                remaining_capacity)
+                                                remaining_capacity,
+                                                product_type)
 
         # Update the remaining capacity
         remaining_capacity -= quantity
@@ -177,7 +194,7 @@ def station_fan(energy, reserve, assumed_reserve=None):
 
     return pd.concat(band_stacks)
 
-def energy_stack(energy, station_metadata, assumed_reserve=None):
+def create_energy_stack(energy, station_metadata, assumed_reserve=None):
     energy_version = energy_only(energy)
     full_metadata = update_metadata(station_metadata, assumed_reserve,
                                         "PLSR", 0)
@@ -293,7 +310,8 @@ be a Nx2 array, current size is %sx%s" % pairs.shape)
 
 
 def feasible_reserve_region(stack, res_price, res_quantity, res_percent,
-                            nameplate_capacity, remaining_capacity):
+                            nameplate_capacity, remaining_capacity,
+                            product_type):
 
     """
     Create a feasible region array with information about energy and reserve
@@ -312,6 +330,8 @@ def feasible_reserve_region(stack, res_price, res_quantity, res_percent,
     remaining_capacity: Subtracting the reserve bands at lower price quantities
                         from the nameplate capacity to leave a residual
                         quantity
+    reserve_type: string, either "PLSR" or "TWDSR". indicates some special
+                  behaviour for "TWDSR".
 
 
     Returns:
@@ -332,7 +352,9 @@ def feasible_reserve_region(stack, res_price, res_quantity, res_percent,
 
     # Create a line due to the proportionality constraint.
     # Note percentages are reported as is...
+    # Still need to figure out how to do TWD here...
     reserve_line = stack[:,3] * res_percent /100.
+
     reserve_line = np.where(reserve_line <= res_quantity, reserve_line,
                             res_quantity)
     # Adjust for the modified capacity line

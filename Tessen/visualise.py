@@ -9,6 +9,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib as mpl
+import matplotlib.cm as cm
 from OfferPandas import Frame
 import simplejson as json
 import os
@@ -109,7 +110,7 @@ def _check_consitency(filtered):
     # Return None if no errors are raised
     return None
 
-def _aggregate(filtered, il_data=None):
+def _aggregate(filtered, il_data=None, price_increments=None):
     """ Aggregate the data together once all of the filters have been applied:
     This is the entirety of the 'logic' for this module,
 
@@ -129,12 +130,29 @@ def _aggregate(filtered, il_data=None):
         to construct the shading and legend for the energy offers.
     """
 
-    aggregated_data = defaultdict(dict)
+    aggregated_data = _construct_reserve_dictionary(filtered,
+                    price_increments=price_increments)
 
-    return None
+    if il_data:
+        raise NotImplemented(""" This feature is still to be implemented """)
+
+    return aggregated_data
 
 def _construct_reserve_dictionary(data, price_increments=None):
-    """
+    """ Iterates through either all of the reserve prices or a subset there
+    of for custom views. Will call the _construct_reserve_line function
+    on each reserve price to generate the ascending reserve price
+    contours.
+
+    Parameters
+    ----------
+    data: The fan data
+    price_increments: Optional, array of floats representing prices of
+                       interest, use to specify fewer contours.
+
+    Returns:
+    --------
+    reserve_accumulations: Dictionary of reserve_price: x, y pairs for plots.
 
     """
     if not price_increments:
@@ -165,29 +183,89 @@ def _construct_reserve_line(data):
     sort_columns = ["Energy Price", "Incremental Reserve Quantity"]
     ascending = [True, False]
 
-`   agg = data.groupby(group_columns, as_index=False).aggregate(aggregations)
-    sort_data = agg.sort_columns(columns=sort_columns, ascending=ascending)
-    return sort_data[energy_line].cumsum(), sort_data[reserve_line].cumsum()
+    agg = data.groupby(group_columns, as_index=False).aggregate(aggregations)
+    sort_data = agg.sort(columns=sort_columns, ascending=ascending)
+
+    # returns a tuple of two arrays which can be plotted
+    return (sort_data["Energy Price"].values,
+            sort_data[energy_line].cumsum().values,
+            sort_data[reserve_line].cumsum().values)
 
 
 
 
-def _generate_plot(aggregated_data):
+def _generate_plot(aggregated_data, reserve_colour=cm.Blues,
+                   energy_colour=cm.YlOrRd, energy_prices=None):
     """ Generate the plot figure
 
     """
 
     fig, axes = plt.subplots(1, 1)
 
+    # Plot the reserve lines:
+    axes, res_legend = _plot_reserve_contours(axes, aggregated_data,
+                                              cmap=reserve_colour)
 
-def _plot_reserve_contours(axes, data):
+    max_reserve = aggregated_data[np.max(aggregated_data.keys())]
+    axes, en_legend = _plot_energy_shading(axes, max_reserve,
+                                           cmap=energy_colour,
+                                           prices=energy_prices)
+
+    plt.gca().add_artist(res_legend)
+
+    # Set the xlim and ylim to a zero basis
+    axes.set_xlim(0, axes.get_xlim()[1])
+    axes.set_ylim(0, axes.get_ylim()[1])
+
+    axes.set_xlabel("Energy Offer [MW]", fontsize=18)
+    axes.set_ylabel("Reserve Offer [MW]", fontsize=18)
+
+    return fig, axes
+
+
+def _plot_reserve_contours(axes, reserve_accumulations, cmap=cm.Blues):
     """ Non publically exposed function, this plots the reserve lines in
     ascending fashion.
 
     """
 
-    return None
+    prices = np.sort(reserve_accumulations.keys())
+    colours = cmap(np.linspace(0, 1, len(prices)))
+    lines = []
 
-def _plot_energy_shading(axes, data):
+    for price, col in zip(prices, colours):
+        eprice, eline, rline = reserve_accumulations[price]
+        lines.append(axes.plot(eline, rline, label=price, color=col,
+                               linewidth=2)[0])
 
-    return None
+
+    res_legend = axes.legend(lines, list(prices), loc='upper right')
+    return axes, res_legend
+
+def _plot_energy_shading(axes, all_reserve, prices=None, cmap=cm.YlOrRd):
+
+    all_reserve = np.array(all_reserve)
+
+    if not prices:
+        prices = np.unique(all_reserve[:,0])
+
+    low_price = 0
+    colours = cmap(np.linspace(0, 1, len(prices)))
+    lines = []
+    for high_price, c in zip(prices, colours):
+        truth_low = all_reserve[:,0] >= low_price
+        truth_high = all_reserve[:,0] <= high_price
+        eline = np.where(truth_low & truth_high, all_reserve[:,1], 0)
+        rline = np.where(truth_low & truth_high, all_reserve[:,2], 0)
+        rzeros = np.zeros(len(rline))
+
+        axes.fill_between(eline, rline, rzeros, alpha=0.5, color=c)
+        lines.append(axes.plot([0,0], [0,0], label=prices, color=c)[0])
+        low_price = high_price
+
+    en_legend = axes.legend(lines, list(prices), loc='upper left')
+
+    return axes, en_legend
+
+
+
