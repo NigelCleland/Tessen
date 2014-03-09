@@ -87,11 +87,12 @@ def _create_fan(energy, reserve):
             single_reserve = reserve.efilter(Trading_Period_ID=tpid,
                         Node=station, Reserve_Type=reserve_type)
 
-            fan_assembly.append(station_fan(single_energy, single_reserve))
+            fan_assembly.append(station_fan(single_energy, single_reserve,
+                                            assumed_reserve=reserve_type))
 
     return pd.concat(fan_assembly, ignore_index=True)
 
-def station_fan(energy, reserve):
+def station_fan(energy, reserve, assumed_reserve=None):
     """ Create the fan information for a given station and single reserve type.
     If multiple reserve types are passed this will fail miserably.
 
@@ -120,10 +121,8 @@ def station_fan(energy, reserve):
     # Will return an energy only version, all reserve set to zero.
     # Don't need to concat there should only be a single version.
     if len(reserve) == 0:
-        energy_version = energy_only(energy)
-        full_metadata = update_metadata(station_metadata, None, None, 0)
-        return band_dataframe(energy_version, full_metadata)
-
+        return energy_stack(energy, station_metadata,
+                            assumed_reserve=assumed_reserve)
 
     if len(reserve["Reserve_Type"].unique()) > 1:
         raise ValueError("Must only pass a single Reserve Type, you passed\
@@ -142,12 +141,19 @@ def station_fan(energy, reserve):
     # Filter Reserve Offers, create a band stack for each pairing
     nonzero_reserve = reserve[reserve["Quantity"] > 0]
     if len(nonzero_reserve) == 0:
-        energy_version = energy_only(energy)
-        full_metadata = update_metadata(station_metadata, None, None, 0)
-        return band_dataframe(energy_version, full_metadata)
+        return energy_stack(energy, station_metadata,
+                            assumed_reserve=assumed_reserve)
 
-
+    # Do a check for zero priced reserve offers here,
+    # If there aren't any then add one to the band stacks call.
+    # Add a zero reserve stack array as it will have no impact upon
+    # The actual fan created, note this may create additional fans
+    # But the tradeoff is a small one.
     band_stacks = []
+    if 0. not in nonzero_reserve["Price"]:
+        band_stacks.append(energy_stack(energy, station_metadata,
+                                 assumed_reserve=assumed_reserve))
+
     for (index, percent, price, quantity, reserve_type, product_type
         ) in nonzero_reserve[["Percent", "Price", "Quantity", "Reserve_Type",
                              "Product_Type"]].itertuples():
@@ -167,10 +173,16 @@ def station_fan(energy, reserve):
         full_metadata = update_metadata(station_metadata, reserve_type,
                                  product_type, percent)
 
-        band_df = band_dataframe(reserve_stack, full_metadata)
-        band_stacks.append(band_df)
+        band_stacks.append(band_dataframe(reserve_stack, full_metadata))
 
     return pd.concat(band_stacks)
+
+def energy_stack(energy, station_metadata, assumed_reserve=None):
+    energy_version = energy_only(energy)
+    full_metadata = update_metadata(station_metadata, assumed_reserve,
+                                        "PLSR", 0)
+    return band_dataframe(energy_version, full_metadata)
+
 
 def energy_only(energy):
     """ Mimics the fan curve for an energy only station by setting all

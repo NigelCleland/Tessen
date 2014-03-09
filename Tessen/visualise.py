@@ -152,11 +152,6 @@ def _construct_reserve_line(data):
     """ Construct an energy and reserve line pairing and returns the values
     These should be increased in energy price to illustrate the fan curve
     trade off behaviour.
-
-    May need to modify this to introduce some baseline behaviour, e.g.
-    if all of the reserve offers are greater than the reserve price the energy
-    offers may be excluded??
-
     """
     aggregations = {"Incremental Reserve Quantity": np.sum,
                     "Incremental Energy Quantity": np.max,
