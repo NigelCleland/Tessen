@@ -207,6 +207,7 @@ def _generate_plot(aggregated_data, reserve_colour=cm.Blues,
                                               cmap=reserve_colour)
 
     max_reserve = aggregated_data[np.max(aggregated_data.keys())]
+
     axes, en_legend = _plot_energy_shading(axes, max_reserve,
                                            cmap=energy_colour,
                                            prices=energy_prices)
@@ -244,19 +245,18 @@ def _plot_reserve_contours(axes, reserve_accumulations, cmap=cm.Blues):
 
 def _plot_energy_shading(axes, all_reserve, prices=None, cmap=cm.YlOrRd):
 
-    all_reserve = np.array(all_reserve)
+    all_reserve = np.array(all_reserve).T
 
     if not prices:
         prices = np.unique(all_reserve[:,0])
 
+    prices = np.sort(prices)
     low_price = 0
     colours = cmap(np.linspace(0, 1, len(prices)))
     lines = []
     for high_price, c in zip(prices, colours):
-        truth_low = all_reserve[:,0] >= low_price
-        truth_high = all_reserve[:,0] <= high_price
-        eline = np.where(truth_low & truth_high, all_reserve[:,1], 0)
-        rline = np.where(truth_low & truth_high, all_reserve[:,2], 0)
+        eline = all_reserve[:,1]
+        rline = _reserve_interval(all_reserve, low_price, high_prices)
         rzeros = np.zeros(len(rline))
 
         axes.fill_between(eline, rline, rzeros, alpha=0.5, color=c)
@@ -266,6 +266,14 @@ def _plot_energy_shading(axes, all_reserve, prices=None, cmap=cm.YlOrRd):
     en_legend = axes.legend(lines, list(prices), loc='upper left')
 
     return axes, en_legend
+
+def _reserve_interval(array, low_price, high_price):
+    """ Masks an array for the energy price contours to return the
+    regions which fall within a given price range.
+    """
+    tlow = array[:,0] >= low_price
+    thigh = array[:,0] <= high_price
+    return np.where(tlow & thigh, array[:,2], 0)
 
 
 
