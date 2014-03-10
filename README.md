@@ -17,7 +17,7 @@ market data offers including improved metadata and filtering functionality.
 
 An example of a Tessen is below:
 
-![What a pretty picture](https://github.com/NigelCleland/Tessen/blob/full_rewrite/example_fan.png)
+![What a pretty picture](https://github.com/NigelCleland/Tessen/blob/full_rewrite/example_fan.png?raw=True)
 
 TWDSR
 -----
