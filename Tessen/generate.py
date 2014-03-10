@@ -21,9 +21,19 @@ def create_fan(energy, reserve, fName=None, return_fan=True, break_tp=False,
 
     Parameters:
     -----------
+    energy: OfferFrame of the energy values
+    reserve: OfferFrame of the reserve values
+    fName: Optional, file to save the resulting fan data to
+    break_tp: Optional, if a save location is specified will break the files
+              into smaller trading period pieces
+    return_fan: Whether to return the Pandas DataFrame containing the Fan.
+    force_plsr_only: Set to True to exclude TWDSR offers
+    *args: Filter arguments, e.g. {"Company": "MRPL"} etc (A dictionary)
+    **kargs: Keyword filter arguments, e.g. Company="MRPL"
 
     Returns:
     --------
+    fan: The Fan Data as a pandas DataFrame.
     """
 
     # Set up a time reporting function:
@@ -74,6 +84,7 @@ at least %s of these which may take at least %s seconds, hold tight""" % (
 
     return None
 
+
 def _create_fan(energy, reserve):
     """Given an energy and reserve offer frame, PLSR, will construct the
     full fan curve for these on a station by station, band by band and by
@@ -107,6 +118,7 @@ def _create_fan(energy, reserve):
                                             assumed_reserve=reserve_type))
 
     return pd.concat(fan_assembly, ignore_index=True)
+
 
 def station_fan(energy, reserve, assumed_reserve=None):
     """ Create the fan information for a given station and single reserve type.
@@ -194,16 +206,44 @@ def station_fan(energy, reserve, assumed_reserve=None):
 
     return pd.concat(band_stacks)
 
+
 def create_energy_stack(energy, station_metadata, assumed_reserve=None):
+    """ Creates an energy version of the stack with zero reserve offers
+    and zero prices. Due to the way the aggregations work this step is
+    required or units which offer reserve at high prices have their energy
+    offers excluded from the low priced ones
+
+    Parameters:
+    -----------
+    energy: Energy offers for that station in question.
+    station_metadata: Information about the station
+    assumed_reserve: FIR or SIR, is repeated more than once.
+
+    Returns:
+    --------
+    DataFrame: A DataFrame containing an energy only incremental DF with
+               asscociated metadata
+    """
     energy_version = energy_only(energy)
     full_metadata = update_metadata(station_metadata, assumed_reserve,
                                         "PLSR", 0)
     return band_dataframe(energy_version, full_metadata)
 
 
+
 def energy_only(energy):
     """ Mimics the fan curve for an energy only station by setting all
     reserve poritons of the stack to zero.
+
+    Parameters:
+    -----------
+    energy: DataFrame of the energy offers
+
+    Returns:
+    --------
+    energy_version: Numpy array containing zeros for reserve portions
+                    but the full energy information.
+
     """
     sorted_energy = energy.sort("Price")
     energy_stack = incremental_energy_stack(
@@ -215,7 +255,11 @@ def energy_only(energy):
 
     return energy_version
 
+
 def update_metadata(station_metadata, reserve_type, product_type, percent):
+    """ Takes the metadata dictionary and appends some new key value
+    pairs to it.
+    """
     full_metadata = station_metadata.copy()
     full_metadata["Reserve_Type"] = reserve_type
     full_metadata["Product_Type"] = product_type
@@ -223,11 +267,13 @@ def update_metadata(station_metadata, reserve_type, product_type, percent):
 
     return full_metadata
 
+
 def band_dataframe(full_stack, full_metadata):
     """ Creates a DataFrame for a single band taking into account the full
     stack along with the metadata for it.
     Returns this DataFrame which may then be added together to create the
     station frame.
+
     """
 
     columns = ["Energy Price", "Energy Quantity",
@@ -243,7 +289,6 @@ def band_dataframe(full_stack, full_metadata):
         df[key] = value
 
     return df
-
 
 
 def get_station_metadata(offer_data):

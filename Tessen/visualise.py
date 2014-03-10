@@ -15,6 +15,7 @@ import simplejson as json
 import os
 import Tessen
 from collections import defaultdict
+import datetime
 
 
 # Apply some nicer plotting options to improve the visualisation.
@@ -26,7 +27,9 @@ for key, value in mplconfig.iteritems():
     mpl.rcParams[key] = value
 
 
-def plot_fan(data, filters, fName=None):
+def plot_fan(data, filters=None, fName=None, reserve_prices=None,
+             energy_prices=None, reserve_colour=cm.Blues,
+             energy_colour=cm.YlOrRd):
     """ Plot the Fan Curve. This is the publically exposed entry point to the
     visualisation. Data is supplied either as a DataFrame, or alternatively
     as a path for a csv file. This is then filtered and the resulting plot
@@ -35,16 +38,28 @@ def plot_fan(data, filters, fName=None):
     Parameters:
     -----------
     data: Pandas DataFrame or CSV path string of generated fan data
-    filters: Filters to apply to the data
+    filters: Filters to apply to the data, optional, depends upon the data
+             passed as to whether these are necessary.
     fName: Optional - Path to save the generated figure to.
+    reserve_prices: Optional, array of reserve prices to assess for clearer
+                    visualisations
+    energy_prices: Optional, array of energy prices for clearer simpler visuals
+    reserve_colour: Matplotlib colour map to visualise the reserve prices
+    energy_colour: Matplotlib colour map to visualise the energy prices
 
     Returns:
     --------
     fig, axes: The matplotlib objects of the plot
+    fName: Optional, the fan curve saved in the location.
 
     """
 
-    if data is not isinstance(pd.DataFrame):
+    begin_time = datetime.datetime.now()
+    estimate = 1
+    print """ I'm beginning to plot the fan now, I estimate this will
+    take me at least %s seconds""" % estimate
+
+    if not isinstance(data, pd.DataFrame):
         try:
             data = pd.read_csv(data)
         except:
@@ -54,24 +69,34 @@ def plot_fan(data, filters, fName=None):
 
     # Create the data as an OfferFrame and filter the data.
     frame = Frame(data)
-    filtered = frame.efilter(filters)
+    if filters:
+        filtered = frame.efilter(filters)
+    else:
+        filtered = frame
 
     # Check that the output won't be nonsense, e.g. multiple periods, islands
-    _check_consistency(flitered)
+    _check_consistency(filtered)
 
     # Aggregate the data
-    aggregated_data = _aggregate(filtered)
+    aggregated_data = _aggregate(filtered, price_increments=reserve_prices)
 
     # Generate the Plots
-    fig, axes = _generate_plot(aggregated_data)
+    fig, axes = _generate_plot(aggregated_data, energy_prices=energy_prices,
+                               energy_colour=energy_colour,
+                               reserve_colour=reserve_colour)
 
     if fName:
         fig.savefig(fName)
 
+    elapsed_time = datetime.datetime.now() - begin_time
+    print """I've completed the fan curve and optionally saved it to %s, I
+    actually took %s seconds to complete this curve""" % (fName,
+                elapsed_time.seconds)
+
     return fig, axes
 
 
-def _check_consitency(filtered):
+def _check_consistency(filtered):
     """ Perform some basic checks upon the Data to provide some useful
     error messages for the users.
 
@@ -110,6 +135,7 @@ def _check_consitency(filtered):
     # Return None if no errors are raised
     return None
 
+
 def _aggregate(filtered, il_data=None, price_increments=None):
     """ Aggregate the data together once all of the filters have been applied:
     This is the entirety of the 'logic' for this module,
@@ -137,6 +163,7 @@ def _aggregate(filtered, il_data=None, price_increments=None):
         raise NotImplemented(""" This feature is still to be implemented """)
 
     return aggregated_data
+
 
 def _construct_reserve_dictionary(data, price_increments=None):
     """ Iterates through either all of the reserve prices or a subset there
@@ -166,10 +193,21 @@ def _construct_reserve_dictionary(data, price_increments=None):
 
     return reserve_accumulations
 
+
 def _construct_reserve_line(data):
     """ Construct an energy and reserve line pairing and returns the values
     These should be increased in energy price to illustrate the fan curve
     trade off behaviour.
+
+    Parameters:
+    -----------
+    data: Data for a single reserve price.
+
+    Returns
+    -------
+    Energy Price: Array of Energy Prices values
+    Energy Line: Cumulative Array of Energy values
+    Reserve Line: Cumulative Array of Reserve values
     """
     aggregations = {"Incremental Reserve Quantity": np.sum,
                     "Incremental Energy Quantity": np.max,
@@ -192,11 +230,20 @@ def _construct_reserve_line(data):
             sort_data[reserve_line].cumsum().values)
 
 
-
-
 def _generate_plot(aggregated_data, reserve_colour=cm.Blues,
                    energy_colour=cm.YlOrRd, energy_prices=None):
-    """ Generate the plot figure
+    """ The nitty gritty of generating the plot figure
+
+    Parameters:
+    -----------
+    aggregated_data: A dictionary of reserve prices to energy and reserve lines
+    reserve_colour: What reserve_colour to use
+    energy_colour: What energy colour to use
+    energy_prices: Optional energy prices to specify
+
+    Returns:
+    --------
+    fig, axes: Matplotlib objects
 
     """
 
@@ -218,15 +265,26 @@ def _generate_plot(aggregated_data, reserve_colour=cm.Blues,
     axes.set_xlim(0, axes.get_xlim()[1])
     axes.set_ylim(0, axes.get_ylim()[1])
 
-    axes.set_xlabel("Energy Offer [MW]", fontsize=18)
-    axes.set_ylabel("Reserve Offer [MW]", fontsize=18)
+    axes.set_xlabel("Energy Offer [MW]")
+    axes.set_ylabel("Reserve Offer [MW]")
 
     return fig, axes
 
 
 def _plot_reserve_contours(axes, reserve_accumulations, cmap=cm.Blues):
     """ Non publically exposed function, this plots the reserve lines in
-    ascending fashion.
+    ascending fashion. Iterates through each key value pairing in the
+    reserve dictionary and plots them in turn.
+
+    Parameters:
+    -----------
+    axes: matplotlib axes object
+    reserve_accumulations: Dictionary of reserve price, line pairs
+    cmap: The colour map to use
+
+    Returns:
+    --------
+    axes, res_legend: matplotlib objects
 
     """
 
@@ -243,20 +301,36 @@ def _plot_reserve_contours(axes, reserve_accumulations, cmap=cm.Blues):
     res_legend = axes.legend(lines, list(prices), loc='upper right')
     return axes, res_legend
 
-def _plot_energy_shading(axes, all_reserve, prices=None, cmap=cm.YlOrRd):
 
+def _plot_energy_shading(axes, all_reserve, prices=None, cmap=cm.YlOrRd):
+    """ Plot the energy shading region.
+    Accomplishes this by taking the most expensive reserve (e.g. full dispatch)
+    and shading under this according to price.
+
+    Parameters:
+    -----------
+    axes: matplotlib axes object
+    all_reserve: The most expensive reserve item, a tuple
+    prices: What energy prices to visualise
+    cmap: What energy colour map to use, defaults to YlOrRd
+
+    Returns:
+    --------
+    axes, en_legend: matplotlib objects
+
+    """
     all_reserve = np.array(all_reserve).T
 
     if not prices:
         prices = np.unique(all_reserve[:,0])
-
     prices = np.sort(prices)
+
     low_price = 0
     colours = cmap(np.linspace(0, 1, len(prices)))
     lines = []
     for high_price, c in zip(prices, colours):
         eline = all_reserve[:,1]
-        rline = _reserve_interval(all_reserve, low_price, high_prices)
+        rline = _reserve_interval(all_reserve, low_price, high_price)
         rzeros = np.zeros(len(rline))
 
         axes.fill_between(eline, rline, rzeros, alpha=0.5, color=c)
@@ -267,9 +341,23 @@ def _plot_energy_shading(axes, all_reserve, prices=None, cmap=cm.YlOrRd):
 
     return axes, en_legend
 
+
 def _reserve_interval(array, low_price, high_price):
     """ Masks an array for the energy price contours to return the
     regions which fall within a given price range.
+    This is used to shade the energy regions of the plot accordingly
+
+    Parameters:
+    -----------
+    array: A numpy array of energy price, energy line and reserve line values
+    low_price: The minimum price
+    high_price: The maximum price
+
+    Returns:
+    --------
+    array: A numpy array of the same length as the reserve line. This line
+           has been masked with zeros for non added areas (e.g. depending
+            upon the energy price for those areas.)
     """
     tlow = array[:,0] >= low_price
     thigh = array[:,0] <= high_price
