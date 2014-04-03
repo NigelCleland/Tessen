@@ -12,6 +12,8 @@ import datetime
 import time
 
 
+
+
 def create_fan(energy, reserve, fName=None, return_fan=True, break_tp=False,
                force_plsr_only=True, *args, **kargs):
     """ A wrapper which implements some optional filtering arguments

@@ -7,3 +7,4 @@ __version__ = '0.2.0'
 
 from generate import create_fan
 from visualise import plot_fan
+from bulk_operation import bulk_run
