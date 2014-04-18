@@ -276,15 +276,21 @@ def _generate_plot(aggregated_data, reserve_colour=cm.Blues,
     plt.gca().add_artist(res_legend)
 
     if energy_cleared:
-        yl, yh = 0, reserve_cleared
-        axes.plot((energy_cleared, energy_cleared), (yl, yh),
+        yh = reserve_cleared if reserve_cleared else axes.get_ylim()[1]
+        axes.plot((energy_cleared, energy_cleared), (0, yh),
                    c='r', linewidth=3, linestyle='--', alpha=0.7)
 
     if reserve_cleared:
         # Get xvalues that span across the plot
-        xl, xh = 0, energy_cleared
-        axes.plot((xl, xh), (reserve_cleared, reserve_cleared),
+        xh = energy_cleared if energy_cleared else axes.get_xlim()[1]
+        axes.plot((0, xh), (reserve_cleared, reserve_cleared),
                     c='b', linewidth=3, linestyle='--', alpha=0.7)
+
+    if energy_cleared and reserve_cleared:
+        axes.scatter([energy_cleared], [reserve_cleared], s=100, c='g',
+                     marker='x', alpha=0.7)
+
+
 
     # Set the xlim and ylim to a zero basis
     if set_xlim:
