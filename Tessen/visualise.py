@@ -29,7 +29,7 @@ for key, value in mplconfig.iteritems():
 
 def plot_fan(data, filters=None, fName=None, reserve_prices=None,
              energy_prices=None, reserve_colour=cm.Blues,
-             energy_colour=cm.YlOrRd):
+             energy_colour=cm.YlOrRd, set_xlim=None, set_ylim=None):
     """ Plot the Fan Curve. This is the publically exposed entry point to the
     visualisation. Data is supplied either as a DataFrame, or alternatively
     as a path for a csv file. This is then filtered and the resulting plot
@@ -46,6 +46,8 @@ def plot_fan(data, filters=None, fName=None, reserve_prices=None,
     energy_prices: Optional, array of energy prices for clearer simpler visuals
     reserve_colour: Matplotlib colour map to visualise the reserve prices
     energy_colour: Matplotlib colour map to visualise the energy prices
+    set_xlim: Default None, Optional, set a defined x axis limit
+    set_ylim: Default None, Optional set a defined y axis limit
 
     Returns:
     --------
@@ -83,7 +85,8 @@ def plot_fan(data, filters=None, fName=None, reserve_prices=None,
     # Generate the Plots
     fig, axes = _generate_plot(aggregated_data, energy_prices=energy_prices,
                                energy_colour=energy_colour,
-                               reserve_colour=reserve_colour)
+                               reserve_colour=reserve_colour,
+                               set_xlim=set_xlim, set_ylim=set_ylim)
 
     if fName:
         fig.savefig(fName)
@@ -231,7 +234,8 @@ def _construct_reserve_line(data):
 
 
 def _generate_plot(aggregated_data, reserve_colour=cm.Blues,
-                   energy_colour=cm.YlOrRd, energy_prices=None):
+                   energy_colour=cm.YlOrRd, energy_prices=None,
+                   set_xlim=None, set_ylim=None):
     """ The nitty gritty of generating the plot figure
 
     Parameters:
@@ -240,6 +244,8 @@ def _generate_plot(aggregated_data, reserve_colour=cm.Blues,
     reserve_colour: What reserve_colour to use
     energy_colour: What energy colour to use
     energy_prices: Optional energy prices to specify
+    set_xlim: Default None, Optional, define a xlimit value to use
+    set_ylim: Default None, Optional, define a ylimit value to use
 
     Returns:
     --------
@@ -262,8 +268,15 @@ def _generate_plot(aggregated_data, reserve_colour=cm.Blues,
     plt.gca().add_artist(res_legend)
 
     # Set the xlim and ylim to a zero basis
-    axes.set_xlim(0, axes.get_xlim()[1])
-    axes.set_ylim(0, axes.get_ylim()[1])
+    if set_xlim:
+        axes.set_xlim(0, set_xlim)
+    else:
+        axes.set_xlim(0, axes.get_xlim()[1])
+
+    if set_ylim:
+        axes.set_ylim(0, set_ylim)
+    else:
+        axes.set_ylim(0, axes.get_ylim()[1])
 
     axes.set_xlabel("Energy Offer [MW]")
     axes.set_ylabel("Reserve Offer [MW]")
