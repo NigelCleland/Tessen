@@ -26,6 +26,11 @@ with open(path) as f:
 for key, value in mplconfig.iteritems():
     mpl.rcParams[key] = value
 
+# Colours from Olga Prettyplotlib
+# https://github.com/olgabot/prettyplotlib/
+almost_black = "#262625"
+light_grey = np.array([float(248) / float(255)] * 3)
+
 
 def plot_fan(data, filters=None, fName=None, reserve_prices=None,
              energy_prices=None, reserve_colour=cm.Blues,
@@ -267,11 +272,17 @@ def _generate_plot(aggregated_data, reserve_colour=cm.Blues,
     axes, res_legend = _plot_reserve_contours(axes, aggregated_data,
                                               cmap=reserve_colour)
 
+    # Modify the legends
+    res_legend = _legend(res_legend)
+
     max_reserve = aggregated_data[np.max(aggregated_data.keys())]
 
     axes, en_legend = _plot_energy_shading(axes, max_reserve,
                                            cmap=energy_colour,
                                            prices=energy_prices)
+
+    # Modify the legend
+    en_legend = _legend(en_legend)
 
     plt.gca().add_artist(res_legend)
 
@@ -306,6 +317,19 @@ def _generate_plot(aggregated_data, reserve_colour=cm.Blues,
     axes.set_xlabel("Energy Offer [MW]")
     axes.set_ylabel("Reserve Offer [MW]")
 
+    # Original Code for spines from
+    # https://github.com/olgabot/prettyplotlib
+    # Remove the spines
+    all_spines = ['top', 'bottom', 'left', 'right']
+    remove_spines = ['top', 'right']
+    for spine in remove_spines:
+        axes.spines[spine].set_visible(False)
+
+    # Thinner spines
+    for spine in all_spines:
+        axes.spines[spine].set_linewidth(0.5)
+
+
     return fig, axes
 
 
@@ -336,7 +360,8 @@ def _plot_reserve_contours(axes, reserve_accumulations, cmap=cm.Blues):
                                linewidth=2)[0])
 
 
-    res_legend = axes.legend(lines, list(prices), loc='upper right')
+    res_legend = axes.legend(lines, list(prices), loc='upper right',
+                             title='Reserve Prices\n      [$/MWh]')
     return axes, res_legend
 
 
@@ -375,7 +400,8 @@ def _plot_energy_shading(axes, all_reserve, prices=None, cmap=cm.YlOrRd):
         lines.append(axes.plot([0,0], [0,0], label=prices, color=c)[0])
         low_price = high_price
 
-    en_legend = axes.legend(lines, list(prices), loc='upper left')
+    en_legend = axes.legend(lines, list(prices), loc='upper left',
+                            title="Energy Prices\n    [$/MWh]")
 
     return axes, en_legend
 
@@ -401,5 +427,22 @@ def _reserve_interval(array, low_price, high_price):
     thigh = array[:,0] <= high_price
     return np.where(tlow & thigh, array[:,2], 0)
 
+def _legend(legend):
+    """
+    Drawn from Olgas pretty plot lib library which can be found here
+    https://github.com/olgabot/prettyplotlib
 
+    All credit goes to her
+    """
+
+    frame = legend.get_frame()
+    frame.set_facecolor(light_grey)
+    frame.set_linewidth(0.0)
+    for t in legend.texts:
+        t.set_color(almost_black)
+
+    return legend
+
+if __name__ == '__main__':
+    pass
 
