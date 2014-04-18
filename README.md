@@ -22,7 +22,7 @@ To see how to use Tessen in a simplified circumstance check out the
 
 An example of a Tessen is below:
 
-![What a pretty picture](https://github.com/NigelCleland/Tessen/blob/full_rewrite/example_fan.png?raw=True)
+![What a pretty picture](https://github.com/NigelCleland/Tessen/blob/develop/example_fan.png?raw=True)
 
 ## Key Project Goals
 
