@@ -29,7 +29,8 @@ for key, value in mplconfig.iteritems():
 
 def plot_fan(data, filters=None, fName=None, reserve_prices=None,
              energy_prices=None, reserve_colour=cm.Blues,
-             energy_colour=cm.YlOrRd, set_xlim=None, set_ylim=None):
+             energy_colour=cm.YlOrRd, set_xlim=None, set_ylim=None,
+             energy_cleared=None, reserve_cleared=None):
     """ Plot the Fan Curve. This is the publically exposed entry point to the
     visualisation. Data is supplied either as a DataFrame, or alternatively
     as a path for a csv file. This is then filtered and the resulting plot
@@ -48,6 +49,8 @@ def plot_fan(data, filters=None, fName=None, reserve_prices=None,
     energy_colour: Matplotlib colour map to visualise the energy prices
     set_xlim: Default None, Optional, set a defined x axis limit
     set_ylim: Default None, Optional set a defined y axis limit
+    energy_cleared: Default None, Optional, The level of energy cleared
+    reserve_cleared: Default None, Optional, the level of reserve cleared
 
     Returns:
     --------
@@ -235,7 +238,8 @@ def _construct_reserve_line(data):
 
 def _generate_plot(aggregated_data, reserve_colour=cm.Blues,
                    energy_colour=cm.YlOrRd, energy_prices=None,
-                   set_xlim=None, set_ylim=None):
+                   set_xlim=None, set_ylim=None, energy_cleared=None,
+                   reserve_cleared=None):
     """ The nitty gritty of generating the plot figure
 
     Parameters:
@@ -246,6 +250,8 @@ def _generate_plot(aggregated_data, reserve_colour=cm.Blues,
     energy_prices: Optional energy prices to specify
     set_xlim: Default None, Optional, define a xlimit value to use
     set_ylim: Default None, Optional, define a ylimit value to use
+    energy_cleared: Default None, Optional, The level of energy cleared
+    reserve_cleared: Default None, Optional, the level of reserve cleared
 
     Returns:
     --------
@@ -266,6 +272,17 @@ def _generate_plot(aggregated_data, reserve_colour=cm.Blues,
                                            prices=energy_prices)
 
     plt.gca().add_artist(res_legend)
+
+    if energy_cleared:
+        yl, yh = 0, max(axes.get_ylim()[1], set_ylim)
+        axes.plot((energy_cleared, energy_cleared), (yl, yh),
+                   c='r', linewidth=3)
+
+    if reserve_cleared:
+        # Get xvalues that span across the plot
+        xl, xh = 0, max(axes.get_xlim()[1], set_xlim)
+        axes.plot((xl, xh), (reserve_cleared, reserve_cleared),
+                    c='b', linewidth=3)
 
     # Set the xlim and ylim to a zero basis
     if set_xlim:
