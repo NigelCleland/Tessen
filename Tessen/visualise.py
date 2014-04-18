@@ -89,7 +89,9 @@ def plot_fan(data, filters=None, fName=None, reserve_prices=None,
     fig, axes = _generate_plot(aggregated_data, energy_prices=energy_prices,
                                energy_colour=energy_colour,
                                reserve_colour=reserve_colour,
-                               set_xlim=set_xlim, set_ylim=set_ylim)
+                               set_xlim=set_xlim, set_ylim=set_ylim,
+                               energy_cleared=energy_cleared,
+                               reserve_cleared=reserve_cleared)
 
     if fName:
         fig.savefig(fName)
@@ -274,15 +276,15 @@ def _generate_plot(aggregated_data, reserve_colour=cm.Blues,
     plt.gca().add_artist(res_legend)
 
     if energy_cleared:
-        yl, yh = 0, max(axes.get_ylim()[1], set_ylim)
+        yl, yh = 0, reserve_cleared
         axes.plot((energy_cleared, energy_cleared), (yl, yh),
-                   c='r', linewidth=3)
+                   c='r', linewidth=3, linestyle='--', alpha=0.7)
 
     if reserve_cleared:
         # Get xvalues that span across the plot
-        xl, xh = 0, max(axes.get_xlim()[1], set_xlim)
+        xl, xh = 0, energy_cleared
         axes.plot((xl, xh), (reserve_cleared, reserve_cleared),
-                    c='b', linewidth=3)
+                    c='b', linewidth=3, linestyle='--', alpha=0.7)
 
     # Set the xlim and ylim to a zero basis
     if set_xlim:
