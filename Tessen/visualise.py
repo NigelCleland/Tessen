@@ -35,7 +35,8 @@ light_grey = np.array([float(248) / float(255)] * 3)
 def plot_fan(data, filters=None, fName=None, reserve_prices=None,
              energy_prices=None, reserve_colour=cm.Blues,
              energy_colour=cm.YlOrRd, set_xlim=None, set_ylim=None,
-             energy_cleared=None, reserve_cleared=None):
+             energy_cleared=None, reserve_cleared=None,
+             fixed_colours=False):
     """ Plot the Fan Curve. This is the publically exposed entry point to the
     visualisation. Data is supplied either as a DataFrame, or alternatively
     as a path for a csv file. This is then filtered and the resulting plot
@@ -56,6 +57,9 @@ def plot_fan(data, filters=None, fName=None, reserve_prices=None,
     set_ylim: Default None, Optional set a defined y axis limit
     energy_cleared: Default None, Optional, The level of energy cleared
     reserve_cleared: Default None, Optional, the level of reserve cleared
+    fixed_colours: Default None, Optional Boolean, Will use a tranche based
+                   colour scheme for identifying colours instead of a linear
+                   spacing, better for assessing differences between periods.
 
     Returns:
     --------
@@ -96,7 +100,8 @@ def plot_fan(data, filters=None, fName=None, reserve_prices=None,
                                reserve_colour=reserve_colour,
                                set_xlim=set_xlim, set_ylim=set_ylim,
                                energy_cleared=energy_cleared,
-                               reserve_cleared=reserve_cleared)
+                               reserve_cleared=reserve_cleared,
+                               fixed_colours=fixed_colours)
 
     if fName:
         fig.savefig(fName)
@@ -246,7 +251,7 @@ def _construct_reserve_line(data):
 def _generate_plot(aggregated_data, reserve_colour=cm.Blues,
                    energy_colour=cm.YlOrRd, energy_prices=None,
                    set_xlim=None, set_ylim=None, energy_cleared=None,
-                   reserve_cleared=None):
+                   reserve_cleared=None, fixed_colours=False):
     """ The nitty gritty of generating the plot figure
 
     Parameters:
@@ -259,6 +264,9 @@ def _generate_plot(aggregated_data, reserve_colour=cm.Blues,
     set_ylim: Default None, Optional, define a ylimit value to use
     energy_cleared: Default None, Optional, The level of energy cleared
     reserve_cleared: Default None, Optional, the level of reserve cleared
+    fixed_colours: Default None, Optional Boolean, Will use a tranche based
+                   colour scheme for identifying colours instead of a linear
+                   spacing, better for assessing differences between periods.
 
     Returns:
     --------
@@ -270,7 +278,8 @@ def _generate_plot(aggregated_data, reserve_colour=cm.Blues,
 
     # Plot the reserve lines:
     axes, res_legend = _plot_reserve_contours(axes, aggregated_data,
-                                              cmap=reserve_colour)
+                                              cmap=reserve_colour,
+                                              fixed_colours=fixed_colours)
 
     # Modify the legends
     res_legend = _legend(res_legend)
@@ -279,7 +288,8 @@ def _generate_plot(aggregated_data, reserve_colour=cm.Blues,
 
     axes, en_legend = _plot_energy_shading(axes, max_reserve,
                                            cmap=energy_colour,
-                                           prices=energy_prices)
+                                           prices=energy_prices,
+                                           fixed_colours=fixed_colours)
 
     # Modify the legend
     en_legend = _legend(en_legend)
@@ -333,7 +343,8 @@ def _generate_plot(aggregated_data, reserve_colour=cm.Blues,
     return fig, axes
 
 
-def _plot_reserve_contours(axes, reserve_accumulations, cmap=cm.Blues):
+def _plot_reserve_contours(axes, reserve_accumulations, cmap=cm.Blues,
+                           fixed_colours=False):
     """ Non publically exposed function, this plots the reserve lines in
     ascending fashion. Iterates through each key value pairing in the
     reserve dictionary and plots them in turn.
@@ -342,7 +353,10 @@ def _plot_reserve_contours(axes, reserve_accumulations, cmap=cm.Blues):
     -----------
     axes: matplotlib axes object
     reserve_accumulations: Dictionary of reserve price, line pairs
-    cmap: The colour map to use
+    cmap: The colour map to use, defaults to cm.Blues
+    fixed_colours: Default None, Optional Boolean, Will use a tranche based
+                   colour scheme for identifying colours instead of a linear
+                   spacing, better for assessing differences between periods.
 
     Returns:
     --------
@@ -351,9 +365,16 @@ def _plot_reserve_contours(axes, reserve_accumulations, cmap=cm.Blues):
     """
 
     prices = np.sort(reserve_accumulations.keys())
-    colours = cmap(np.linspace(0, 1, len(prices)))
-    lines = []
+    if fixed_colours:
+        tranches = np.array([0, 0.5, 1.0, 5, 10, 25, 50, 75, 100, 300, 500,
+                             750, 1000, 2500, 5000])
+        cmapping = cmap(np.linspace(0, 1, len(tranches)))
+        col_dict = {p: c for p, c in zip(tranches, cmapping)}
+        colours = [col_dict[get_low(p, tranches)] for p in prices]
+    else:
+        colours = cmap(np.linspace(0, 1, len(prices)))
 
+    lines = []
     for price, col in zip(prices, colours):
         eprice, eline, rline = reserve_accumulations[price]
         lines.append(axes.plot(eline, rline, label=price, color=col,
@@ -365,7 +386,8 @@ def _plot_reserve_contours(axes, reserve_accumulations, cmap=cm.Blues):
     return axes, res_legend
 
 
-def _plot_energy_shading(axes, all_reserve, prices=None, cmap=cm.YlOrRd):
+def _plot_energy_shading(axes, all_reserve, prices=None, cmap=cm.YlOrRd,
+                         fixed_colours=False):
     """ Plot the energy shading region.
     Accomplishes this by taking the most expensive reserve (e.g. full dispatch)
     and shading under this according to price.
@@ -376,6 +398,9 @@ def _plot_energy_shading(axes, all_reserve, prices=None, cmap=cm.YlOrRd):
     all_reserve: The most expensive reserve item, a tuple
     prices: What energy prices to visualise
     cmap: What energy colour map to use, defaults to YlOrRd
+    fixed_colours: Default None, Optional Boolean, Will use a tranche based
+                   colour scheme for identifying colours instead of a linear
+                   spacing, better for assessing differences between periods.
 
     Returns:
     --------
@@ -388,8 +413,23 @@ def _plot_energy_shading(axes, all_reserve, prices=None, cmap=cm.YlOrRd):
         prices = np.unique(all_reserve[:,0])
     prices = np.sort(prices)
 
+
+    # Use a tranche based assessment to plot colours
+    # Could use a log based scheme instead of fixed tranches?
+    # Each tranche will be a linear colour difference, may not
+    # accurately convey the differences
+    if fixed_colours:
+        tranches = np.array([0, 10, 25, 50, 75, 100, 150, 300,
+                                   500, 750, 1000, 2000, 5000, 10000])
+        cmapping = cmap(np.linspace(0, 1, len(tranches)))
+        col_dict = {p: c for p, c in zip(tranches, cmapping)}
+        colours = [col_dict[get_low(p, tranches)] for p in prices]
+    else:
+        colours = cmap(np.linspace(0, 1, len(prices)))
+
+    # Iterate through the prices updating the low price each time
+    # To update the interval
     low_price = 0
-    colours = cmap(np.linspace(0, 1, len(prices)))
     lines = []
     for high_price, c in zip(prices, colours):
         eline = all_reserve[:,1]
@@ -400,10 +440,16 @@ def _plot_energy_shading(axes, all_reserve, prices=None, cmap=cm.YlOrRd):
         lines.append(axes.plot([0,0], [0,0], label=prices, color=c)[0])
         low_price = high_price
 
+    # Need a separate legend object in order to ensure we get both
+    # Legends, also add a title and units
     en_legend = axes.legend(lines, list(prices), loc='upper left',
                             title="Energy Prices\n    [$/MWh]")
 
     return axes, en_legend
+
+
+def get_low(x, array):
+    return array[x >= array].max()
 
 
 def _reserve_interval(array, low_price, high_price):
