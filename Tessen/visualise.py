@@ -36,7 +36,7 @@ def plot_fan(data, filters=None, fName=None, reserve_prices=None,
              energy_prices=None, reserve_colour=cm.Blues,
              energy_colour=cm.YlOrRd, set_xlim=None, set_ylim=None,
              energy_cleared=None, reserve_cleared=None,
-             fixed_colours=False):
+             fixed_colours=False, ilmap=None):
     """ Plot the Fan Curve. This is the publically exposed entry point to the
     visualisation. Data is supplied either as a DataFrame, or alternatively
     as a path for a csv file. This is then filtered and the resulting plot
@@ -60,6 +60,8 @@ def plot_fan(data, filters=None, fName=None, reserve_prices=None,
     fixed_colours: Default None, Optional Boolean, Will use a tranche based
                    colour scheme for identifying colours instead of a linear
                    spacing, better for assessing differences between periods.
+    ilmap: Dictionary mapping il prices to cumulative IL available.
+           This must be the cumulative IL stack not the incremental stack.
 
     Returns:
     --------
@@ -101,7 +103,7 @@ def plot_fan(data, filters=None, fName=None, reserve_prices=None,
                                set_xlim=set_xlim, set_ylim=set_ylim,
                                energy_cleared=energy_cleared,
                                reserve_cleared=reserve_cleared,
-                               fixed_colours=fixed_colours)
+                               fixed_colours=fixed_colours, ilmap=ilmap)
 
     if fName:
         fig.savefig(fName)
@@ -251,7 +253,8 @@ def _construct_reserve_line(data):
 def _generate_plot(aggregated_data, reserve_colour=cm.Blues,
                    energy_colour=cm.YlOrRd, energy_prices=None,
                    set_xlim=None, set_ylim=None, energy_cleared=None,
-                   reserve_cleared=None, fixed_colours=False):
+                   reserve_cleared=None, fixed_colours=False,
+                   ilmap=None):
     """ The nitty gritty of generating the plot figure
 
     Parameters:
@@ -267,6 +270,8 @@ def _generate_plot(aggregated_data, reserve_colour=cm.Blues,
     fixed_colours: Default None, Optional Boolean, Will use a tranche based
                    colour scheme for identifying colours instead of a linear
                    spacing, better for assessing differences between periods.
+    ilmap: Dictionary mapping il prices to cumulative IL available.
+           This must be the cumulative IL stack not the incremental stack.
 
     Returns:
     --------
@@ -279,7 +284,8 @@ def _generate_plot(aggregated_data, reserve_colour=cm.Blues,
     # Plot the reserve lines:
     axes, res_legend = _plot_reserve_contours(axes, aggregated_data,
                                               cmap=reserve_colour,
-                                              fixed_colours=fixed_colours)
+                                              fixed_colours=fixed_colours,
+                                              ilmap=ilmap)
 
     # Modify the legends
     res_legend = _legend(res_legend)
@@ -344,7 +350,7 @@ def _generate_plot(aggregated_data, reserve_colour=cm.Blues,
 
 
 def _plot_reserve_contours(axes, reserve_accumulations, cmap=cm.Blues,
-                           fixed_colours=False):
+                           fixed_colours=False, ilmap=None):
     """ Non publically exposed function, this plots the reserve lines in
     ascending fashion. Iterates through each key value pairing in the
     reserve dictionary and plots them in turn.
@@ -357,6 +363,8 @@ def _plot_reserve_contours(axes, reserve_accumulations, cmap=cm.Blues,
     fixed_colours: Default None, Optional Boolean, Will use a tranche based
                    colour scheme for identifying colours instead of a linear
                    spacing, better for assessing differences between periods.
+    ilmap: Dictionary mapping il prices to cumulative IL available.
+           This must be the cumulative IL stack not the incremental stack.
 
     Returns:
     --------
@@ -365,6 +373,9 @@ def _plot_reserve_contours(axes, reserve_accumulations, cmap=cm.Blues,
     """
 
     prices = np.sort(reserve_accumulations.keys())
+    if ilmap:
+        prices = np.unique(np.sort(prices.tolist() + ilmap.keys()))
+
     if fixed_colours:
         tranches = np.array([0, 0.5, 1.0, 5, 10, 25, 50, 75, 100, 300, 500,
                              750, 1000, 2500, 5000])
@@ -375,8 +386,28 @@ def _plot_reserve_contours(axes, reserve_accumulations, cmap=cm.Blues,
         colours = cmap(np.linspace(0, 1, len(prices)))
 
     lines = []
+    #oldline = np.zeros()
+    print reserve_accumulations.values
     for price, col in zip(prices, colours):
-        eprice, eline, rline = reserve_accumulations[price]
+        # Try and get a new value, may fail due to IL keys
+        # If it fails we use the last values
+        if price in reserve_accumulations.keys():
+            eprice, eline, rline = reserve_accumulations[price]
+        else:
+            rline = oldline
+        # Add IL Values
+        if ilmap:
+            # Save the oldline in case there is a pure IL change
+            # At the next step.
+            oldline = np.array(rline.tolist())
+            # Incase there are key issues wrap it in try loop
+            # This happens when there isn't a 0 prices IL offer.
+            try:
+                iladdition = ilmap[get_low(price, np.array(ilmap.keys()))]
+            except ValueError:
+                iladdition = 0
+            rline += iladdition
+
         lines.append(axes.plot(eline, rline, label=price, color=col,
                                linewidth=2)[0])
 
