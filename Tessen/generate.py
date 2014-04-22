@@ -15,7 +15,7 @@ import time
 
 
 def create_fan(energy, reserve, fName=None, return_fan=True, break_tp=False,
-               force_plsr_only=True, *args, **kargs, verbose=False):
+               force_plsr_only=True, verbose=False, *args, **kargs):
     """ A wrapper which implements some optional filtering arguments
     to speed up the process, otherwise iterating can take a very large time.
 

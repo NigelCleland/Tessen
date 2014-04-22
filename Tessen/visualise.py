@@ -468,8 +468,11 @@ def _plot_energy_shading(axes, all_reserve, prices=None, cmap=cm.YlOrRd,
         rline = _reserve_interval(all_reserve, low_price, high_price)
         rzeros = np.zeros(len(rline))
 
-        axes.fill_between(eline, rline, rzeros, alpha=0.5, color=c)
-        lines.append(axes.plot([0,0], [0,0], label=prices, color=c)[0])
+        # Set a consistent alpha value
+        alpha=0.8
+        # Plot the shading and a dummy line for the legend.
+        axes.fill_between(eline, rline, rzeros, color=c, alpha=alpha)
+        lines.append(axes.plot([0,0], [0,0], label=high_price, color=c, alpha=alpha)[0])
         low_price = high_price
 
     # Need a separate legend object in order to ensure we get both
@@ -501,7 +504,14 @@ def _reserve_interval(array, low_price, high_price):
            has been masked with zeros for non added areas (e.g. depending
             upon the energy price for those areas.)
     """
-    tlow = array[:,0] >= low_price
+    # Quick check for a zero value which is needed to begin the low prices
+    if low_price == 0.0:
+        tlow = array[:,0] >= low_price
+    else:
+        tlow = array[:,0] > low_price
+
+    # note the <= vs < debate is very important here. The colours will be
+    # All wrong if you fuck with these. Don't fuck with these
     thigh = array[:,0] <= high_price
     return np.where(tlow & thigh, array[:,2], 0)
 
