@@ -66,7 +66,8 @@ def create_fan(energy, reserve, fName=None, return_fan=True, break_tp=False,
     elapsed_time = datetime.datetime.now() - begin_time
     number_fans = len(fan[["Node", "Trading_Period_ID", "Reserve_Type",
                            "Reserve Price"]].drop_duplicates())
-    print "I successfully calculated %s fans in %s seconds" % (number_fans,
+    if verbose:
+        print "I successfully calculated %s fans in %s seconds" % (number_fans,
                  elapsed_time.seconds)
 
     if fName:
