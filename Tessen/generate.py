@@ -15,7 +15,7 @@ import time
 
 
 def create_fan(energy, reserve, fName=None, return_fan=True, break_tp=False,
-               force_plsr_only=True, *args, **kargs):
+               force_plsr_only=True, *args, **kargs, verbose=False):
     """ A wrapper which implements some optional filtering arguments
     to speed up the process, otherwise iterating can take a very large time.
 
@@ -55,8 +55,9 @@ def create_fan(energy, reserve, fName=None, return_fan=True, break_tp=False,
 
     estimate_number = len(filtered_energy[["Node",
                             "Trading_Period_ID"]].drop_duplicates()) * 2
-    print """I'm beginning to create fan curves, I estimate I'll need to do
-at least %s of these which may take at least %s seconds, hold tight""" % (
+    if verbose:
+        print """I'm beginning to create fan curves, I estimate I'll need to do
+    at least %s of these which may take at least %s seconds, hold tight""" % (
             estimate_number, estimate_number * 0.008)
 
 
@@ -70,7 +71,8 @@ at least %s of these which may take at least %s seconds, hold tight""" % (
 
     if fName:
         if break_tp:
-            print "I'll now begin saving these to individual trading period files"
+            if verbose:
+                print "I'll now begin saving these to individual trading period files"
             for each in fan["Trading_Period_ID"].unique():
                 single = fan[fan["Trading_Period_ID"] == each]
                 new_ext = '_' + str(each) + '.csv'
@@ -78,7 +80,8 @@ at least %s of these which may take at least %s seconds, hold tight""" % (
                 single.to_csv(single_name, header=True, index=False)
 
         else:
-            print "I'll now begin saving these to a single file"
+            if verbose:
+                print "I'll now begin saving these to a single file"
             fan.to_csv(fName, header=True, index=False)
 
     if return_fan:

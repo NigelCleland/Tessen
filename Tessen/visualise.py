@@ -36,7 +36,7 @@ def plot_fan(data, filters=None, fName=None, reserve_prices=None,
              energy_prices=None, reserve_colour=cm.Blues,
              energy_colour=cm.YlOrRd, set_xlim=None, set_ylim=None,
              energy_cleared=None, reserve_cleared=None,
-             fixed_colours=False, ilmap=None):
+             fixed_colours=False, ilmap=None, verbose=False):
     """ Plot the Fan Curve. This is the publically exposed entry point to the
     visualisation. Data is supplied either as a DataFrame, or alternatively
     as a path for a csv file. This is then filtered and the resulting plot
@@ -72,8 +72,9 @@ def plot_fan(data, filters=None, fName=None, reserve_prices=None,
 
     begin_time = datetime.datetime.now()
     estimate = 1
-    print """ I'm beginning to plot the fan now, I estimate this will
-    take me at least %s seconds""" % estimate
+    if verbose:
+        print """ I'm beginning to plot the fan now, I estimate this will
+        take me at least %s seconds""" % estimate
 
     if not isinstance(data, pd.DataFrame):
         try:
@@ -109,8 +110,9 @@ def plot_fan(data, filters=None, fName=None, reserve_prices=None,
         fig.savefig(fName)
 
     elapsed_time = datetime.datetime.now() - begin_time
-    print """I've completed the fan curve and optionally saved it to %s, I
-    actually took %s seconds to complete this curve""" % (fName,
+    if verbose:
+        print """I've completed the fan curve and optionally saved it to %s, I
+        actually took %s seconds to complete this curve""" % (fName,
                 elapsed_time.seconds)
 
     return fig, axes
@@ -387,7 +389,6 @@ def _plot_reserve_contours(axes, reserve_accumulations, cmap=cm.Blues,
 
     lines = []
     #oldline = np.zeros()
-    print reserve_accumulations.values
     for price, col in zip(prices, colours):
         # Try and get a new value, may fail due to IL keys
         # If it fails we use the last values
