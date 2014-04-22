@@ -86,6 +86,9 @@ def plot_fan(data, filters=None, fName=None, reserve_prices=None,
 
     # Create the data as an OfferFrame and filter the data.
     frame = Frame(data)
+    # Manual memory management
+    del data
+
     if filters:
         filtered = frame.efilter(filters)
     else:
@@ -114,6 +117,11 @@ def plot_fan(data, filters=None, fName=None, reserve_prices=None,
         print """I've completed the fan curve and optionally saved it to %s, I
         actually took %s seconds to complete this curve""" % (fName,
                 elapsed_time.seconds)
+
+    # Manual memory management
+    del aggregated_data
+    del frame
+    del filtered
 
     return fig, axes
 
